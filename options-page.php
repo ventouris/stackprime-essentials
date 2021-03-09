@@ -5,7 +5,7 @@
 			"name" => "Admin footer",
 			"description" => "Remove the admin footer text",
 			"notes" => "Default: 'Thank you for creating with WordPress.'",
-			"enable" => true
+			"enable" => false
 		),
 		
 		"remove_wp_logo_on_header" => array(

@@ -13,7 +13,7 @@ Plugin URI: https://www.stackprime.com/
  
 Description: A custom plugin from stackprime to unbloat your site from unwanted output. Remove admin nags and notifications, unnecessary items and performance-draining code. Includes security patches and shortcodes.
  
-Version: 0.1.0
+Version: 0.1.1
  
 Author: stackprime
  

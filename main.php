@@ -28,7 +28,7 @@ Text Domain: stackprime
 	
 include( plugin_dir_path( __FILE__ ) . 'options-page.php' );
 
-require_once( 'update.php' );
+require_once( plugin_dir_path( __FILE__ ) . 'update.php' );
 if ( is_admin() ) {
     new BFIGitHubPluginUpdater( __FILE__, 'myGitHubUsername', "Repo-Name" );
 }

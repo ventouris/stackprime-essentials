@@ -199,6 +199,15 @@
 		)
 	);
 
+	$misc = array( 		
+		"move_styling_to_header" => array(
+			"name" => "Inline style tags",
+			"description" => "Get all &lt;style&gt; elements and move them to the head tag. Choose this if you have an ESPA website to pass W3C validator",
+			"notes" => "",
+			"data" => "",
+			"enable" => true
+		)
+	);
 
 
 
@@ -337,6 +346,11 @@
 
 	}
 
+	if ( $misc['move_styling_to_header']['enable'] ) {
+		 add_action( 'wp_head', 'start_modify_html' );
+		 add_action( 'wp_footer', 'end_modify_html' );
+	}
+
 	
 
 // // // // // // // // // // // // //
@@ -472,6 +486,21 @@
 		return $admin_ui["custom_login_page"]['data']['title'];
 	}
 
+	function start_modify_html() {
+		ob_start();
+	 }
+	 
+	 function end_modify_html() {
+		$html = ob_get_clean();
+		$style = "";
+		preg_match_all('#<style>(.*?)</style>#is', $html, $matches, PREG_SET_ORDER);
+		foreach($matches as $match) {
+			$style .= $match[1];
+		}
+		echo '<style>' . $style . '</style>';
+		echo preg_replace('#<style>(.*?)</style>#is', '', $html);
+	 }
+
 
 
 // // // // // // // // // // // // //
@@ -531,7 +560,7 @@
 	}
 
 	function stackprime_custom_settings() {
-		global $admin_ui, $security, $shortcodes, $performance;
+		global $admin_ui, $security, $shortcodes, $performance, $misc;
 		
 		echo '<style>
 				.stackprime-page .stackprime-page-description {
@@ -571,6 +600,8 @@
 				<a href="#stackprime_page_performance">Performance</a>
 				&bull;
 				<a href="#stackprime_page_shortcodes">Shortcodes</a>
+				&bull;
+				<a href="#stackprime_page_misc">Misc</a>
 			</p>
 		</nav>';	
               
@@ -593,7 +624,16 @@
 		foreach ($shortcodes as $name => $data) {
 			print_setting($name, $data);
 		}
+
+		echo '<h2 id="stackprime_page_misc">Misc</h2>';
+		foreach ($misc as $name => $data) {
+			print_setting($name, $data);
+		}
 		
             
     	echo '</div>';
     }
+
+
+
+

@@ -33,3 +33,4 @@ if ( is_admin() ) {
     new BFIGitHubPluginUpdater( __FILE__, 'myGitHubUsername', "Repo-Name" );
 }
 
+

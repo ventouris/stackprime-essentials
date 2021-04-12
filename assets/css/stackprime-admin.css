@@ -1,0 +1,14 @@
+/**
+ * All of the CSS for your admin-specific functionality should be
+ * included in this file.
+ */
+
+
+#stackprime_settings_form td label {
+    font-style: italic;
+}
+
+
+ #custom_login_page:checked input[id^="custom_login_page_"] {
+     display:none;
+ }

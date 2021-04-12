@@ -1,2 +1,0 @@
-# stackprime-essentials
- 

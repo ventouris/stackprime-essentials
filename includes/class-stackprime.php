@@ -25,7 +25,7 @@
  * @since      1.0.0
  * @package    Stackprime
  * @subpackage Stackprime/includes
- * @author     Tasos Ventouris <info@stackprime.com>
+ * @author     stackprime <info@stackprime.com>
  */
 class Stackprime {
 

@@ -14,10 +14,10 @@
  *
  * @wordpress-plugin
  * Plugin Name:       Stackprime Essentials
- * Plugin URI:        stackprime
+ * Plugin URI:        https://www.stackprime.com
  * Description:       A custom plugin from stackprime to unbloat your site from unwanted output. Remove admin nags and notifications, unnecessary items and performance-draining code. Includes security patches and shortcodes.
- * Version:           1.0.0
- * Author:            Tasos Ventouris
+ * Version:           1.0.1
+ * Author:            stackprime
  * Author URI:        https://www.stackprime.com
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
@@ -35,7 +35,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'STACKPRIME_VERSION', '1.0.0' );
+define( 'STACKPRIME_VERSION', '1.0.1' );
 
 /**
  * The code that runs during plugin activation.

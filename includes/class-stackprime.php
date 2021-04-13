@@ -79,7 +79,13 @@ class Stackprime {
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
 		if ( is_admin() ) {
-			new BFIGitHubPluginUpdater( __FILE__, 'myGitHubUsername', "Repo-Name" );
+			$updater = new Smashing_Updater( __FILE__ );
+			$updater->set_username( 'ventouris' );
+			$updater->set_repository( 'stackprime-essentials' );
+			/*
+				$updater->authorize( 'abcdefghijk1234567890' ); // Your auth code goes here for private repos
+			*/
+			$updater->initialize();
 		}
 	}
 

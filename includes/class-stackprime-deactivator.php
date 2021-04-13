@@ -30,9 +30,7 @@ class Stackprime_Deactivator {
 	 * @since    1.0.0
 	 */
 	public static function deactivate() {
-		$shortcodes = get_option('stackprime_shortcodes_options');
-		wp_unschedule_event( time(), 'daily', 'get_stock_market_daily_data', array( "company" => $shortcodes["get_stock_market_data_company"]) );
-		remove_action('daily', 'remove_update_stock_market');
+
 	}
 
 }

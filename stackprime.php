@@ -16,7 +16,7 @@
  * Plugin Name:       Stackprime Essentials
  * Plugin URI:        https://www.stackprime.com
  * Description:       A custom plugin from stackprime to unbloat your site from unwanted output. Remove admin nags and notifications, unnecessary items and performance-draining code. Includes security patches and shortcodes.
- * Version:           1.0.2
+ * Version:           1.0.1
  * Author:            stackprime
  * Author URI:        https://www.stackprime.com
  * License:           GPL-2.0+
@@ -35,7 +35,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'STACKPRIME_VERSION', '1.0.2' );
+define( 'STACKPRIME_VERSION', '1.0.1' );
 
 /**
  * The code that runs during plugin activation.
@@ -77,6 +77,17 @@ function run_stackprime() {
 
 	$plugin = new Stackprime();
 	$plugin->run();
+
+	require_once plugin_dir_path( dirname( __FILE__ ) ) . 'update.php' ;
+	if ( is_admin() ) {
+		$updater = new Smashing_Updater( __FILE__ );
+		$updater->set_username( 'ventouris' );
+		$updater->set_repository( 'stackprime-essentials' );
+		/*
+			$updater->authorize( 'abcdefghijk1234567890' ); // Your auth code goes here for private repos
+		*/
+		$updater->initialize();
+	}
 
 }
 run_stackprime();

@@ -78,15 +78,7 @@ class Stackprime {
 		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
-		if ( is_admin() ) {
-			$updater = new Smashing_Updater( __FILE__ );
-			$updater->set_username( 'ventouris' );
-			$updater->set_repository( 'stackprime-essentials' );
-			/*
-				$updater->authorize( 'abcdefghijk1234567890' ); // Your auth code goes here for private repos
-			*/
-			$updater->initialize();
-		}
+
 	}
 
 	/**
@@ -122,7 +114,6 @@ class Stackprime {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) .  'includes/class-stackprime-functions.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) .  'includes/class-stackprime-settings.php';
 
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'update.php' ;
 
 		$this->loader = new Stackprime_Loader();
 

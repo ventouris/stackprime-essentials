@@ -795,6 +795,19 @@ class Stackprime_Settings {
 			)
 		);
 
+		add_settings_field(
+			'woo_tracking_number',
+			__( 'Tracking number', 'stackprime' ),
+			array( $this->functions, 'create_checkbox_input'),
+			'stackprime_woocommerce_options',
+			'woocommerce_options_section',
+			array(
+				'stackprime_woocommerce_options',
+				'woo_tracking_number',
+				__( 'Add a tracking number option on admin Woocommerce orders interface and include that info to the client email.', 'stackprime' ),
+			)
+		);
+
 
 		// Finally, we register the fields with WordPress
 		register_setting(
@@ -1036,6 +1049,12 @@ class Stackprime_Settings {
 		if ((isset($woocommerce['send_cancelled_email_to_client']) ? $woocommerce['send_cancelled_email_to_client'] : null) == "1") {
 			add_action( 'plugins_loaded', array($this->functions, 'send_email_to_customer_on_cancelled_order_in_woocommerce') );
 			add_action('woocommerce_order_status_changed', array($this->functions, 'seccow_send_email'), 10, 4 );
+		}
+
+		if ((isset($woocommerce['woo_tracking_number']) ? $woocommerce['woo_tracking_number'] : null) == "1") {
+			add_action( 'add_meta_boxes', array($this->functions, 'add_tracking_number_metabox'));
+			add_action( 'save_post', array($this->functions, 'tracking_number_save_postdata') );
+			add_action( 'woocommerce_email_order_details', array($this->functions, 'add_tracking_info_to_order_completed_email'), 5, 4 ); 
 		}
 		
 

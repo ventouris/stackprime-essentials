@@ -248,6 +248,102 @@ class Stackprime_Functions {
 	}
 
 
+	public function add_tracking_number_metabox( $post ) {
+
+		    add_meta_box(
+		            'Meta Box',
+		            'Tracking number',
+		            array($this, 'show_tracking_number'), 
+		            'shop_order', 
+		            'side',
+		            'high'
+		        );
+		}
+
+	public function show_tracking_number( $post ) {
+		$data = get_post_meta($post->ID, '_tracking_number_data');
+		if (count($data) >= 1) {
+			$selected_company = $data[0]['company'];
+			$selected_tracking_number = $data[0]['tracking_number'];
+		} else {
+			$selected_company = "";
+			$selected_tracking_number = "";
+		};
+		
+		$companies = array(
+						"elta" => "ΕΛΤΑ",
+						"tnt" => "TNT",
+						"geniki" => "Γενική Ταχυδρομική",
+						"speedex" => "Speedex",
+						"acs" => "ACS Courier"
+					);
+		$courier_select = '<select name="tracking_number_company">
+						<option disalbed="disabled">Choose Courier</option>';
+		
+		foreach ($companies as $key => $val) {
+			$courier_select .= '<option ' . ($key == $selected_company ? 'selected = "selected"' : "") . ' value="' . $key . '">' . $val . '</option>';
+		};
+		$courier_select .= '</select>';
+		echo $courier_select;
+		
+		echo '<br><br>';
+		echo '<input type="text" name="tracking_number" placeholder="Tracking Number" value="' . $selected_tracking_number . '" />';
+	
+	}
+
+	public function tracking_number_save_postdata( $post_id ) {
+
+		// If this is an autosave, our form has not been submitted, so we don't want to do anything.
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
+			return $post_id;
+	  
+		// Check the user's permissions. If want
+		if ( 'shop_order' == $_POST['post_type'] ) {
+	  
+		  if ( ! current_user_can( 'manage_woocommerce', $post_id ) )
+			  return $post_id;
+	  
+		}
+	  
+		/* OK, its safe for us to save the data now. */
+	  
+		  $data = array("company"=> sanitize_text_field( $_POST['tracking_number_company'] ),
+						  "tracking_number" => sanitize_text_field( $_POST['tracking_number'] )
+					  );
+	  
+		// Update the meta field in the database.
+		update_post_meta( $post_id, '_tracking_number_data', $data ); // choose field name
+	  }
+
+	public function add_tracking_info_to_order_completed_email( $order, $sent_to_admin, $plain_text, $email ) {
+
+		if ( 'customer_completed_order' == $email->id || 'customer_invoice' == $email->id ) {
+			$order_id = $order->get_id();
+			$data = get_post_meta($order_id, '_tracking_number_data');
+			if (count($data) >= 1) {
+				$selected_company = $data[0]['company'];
+				$selected_tracking_number = $data[0]['tracking_number'];
+				$tracking_url = '<a href="https://t.17track.net/en#nums=' . $selected_tracking_number . '">' . $selected_tracking_number . '</a>';
+			} else {
+				$selected_company = "";
+				$selected_tracking_number = "";
+			};
+	
+			
+			// Quit if either tracking field is empty.
+			if ( empty( $selected_tracking_number ) ) {
+				return;
+			}
+	
+			if ( $plain_text ) {
+				printf( __("\nYour tracking number is %s.\n", 'stackprime'), $tracking_url );
+			}
+			else {
+				printf( __('<p>Your tracking number is %s.</p>', 'stackprime'), $tracking_url );
+			}
+		}
+	}
+
 	public function sanitize_options( $input ) {
 
 		// Define the array for the updated options

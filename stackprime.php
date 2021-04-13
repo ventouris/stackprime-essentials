@@ -78,7 +78,7 @@ function run_stackprime() {
 	$plugin = new Stackprime();
 	$plugin->run();
 
-	require_once plugin_dir_path( dirname( __FILE__ ) ) . 'update.php' ;
+	require_once plugin_dir_path(  __FILE__ ) . 'update.php' ;
 	if ( is_admin() ) {
 		$updater = new Smashing_Updater( __FILE__ );
 		$updater->set_username( 'ventouris' );

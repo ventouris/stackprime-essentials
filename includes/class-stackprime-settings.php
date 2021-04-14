@@ -408,7 +408,7 @@ class Stackprime_Settings {
 
 		register_setting(
 			'stackprime_admin_ui_options',
-			'stackprime_admin_ui_options',
+			'stackprime_admin_ui_options'
 		);
 
 	} 
@@ -534,7 +534,7 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_security_options',
-			'stackprime_security_options',
+			'stackprime_security_options'
 		);
 
 	} 
@@ -713,7 +713,7 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_performance_options',
-			'stackprime_performance_options',
+			'stackprime_performance_options'
 		);
 
 	} 
@@ -763,7 +763,7 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_shortcodes_options',
-			'stackprime_shortcodes_options',
+			'stackprime_shortcodes_options'
 		);
 
 	} 
@@ -812,7 +812,7 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_woocommerce_options',
-			'stackprime_woocommerce_options',
+			'stackprime_woocommerce_options'
 		);
 
 	} 
@@ -848,7 +848,7 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_misc_options',
-			'stackprime_misc_options',
+			'stackprime_misc_options'
 		);
 
 	} 

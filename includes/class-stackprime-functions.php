@@ -313,6 +313,8 @@ class Stackprime_Functions {
 	  
 		// Update the meta field in the database.
 		update_post_meta( $post_id, '_tracking_number_data', $data ); // choose field name
+		$order = wc_get_order(  $post_id );
+		$order->add_order_note( 'Προστέθηκε tracking number' );
 	  }
 
 	public function add_tracking_info_to_order_completed_email( $order, $sent_to_admin, $plain_text, $email ) {
@@ -336,10 +338,10 @@ class Stackprime_Functions {
 			}
 	
 			if ( $plain_text ) {
-				printf( __("\nO αριθμός παρακολούθησης είναι %s.\n", 'stackprime'), $tracking_url );
+				printf( __("\nO αριθμός παρακολούθησης είναι %s με %s.\n", 'stackprime'), $tracking_url, $selected_company );
 			}
 			else {
-				printf( __('<p>O αριθμός παρακολούθησης είναι %s.</p>', 'stackprime'), $tracking_url );
+				printf( __('<p>O αριθμός παρακολούθησης είναι %s με %s.</p>', 'stackprime'), $tracking_url, $selected_company );
 			}
 		}
 	}

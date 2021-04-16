@@ -336,10 +336,10 @@ class Stackprime_Functions {
 			}
 	
 			if ( $plain_text ) {
-				printf( __("\nYour tracking number is %s.\n", 'stackprime'), $tracking_url );
+				printf( __("\nO αριθμός παρακολούθησης είναι %s.\n", 'stackprime'), $tracking_url );
 			}
 			else {
-				printf( __('<p>Your tracking number is %s.</p>', 'stackprime'), $tracking_url );
+				printf( __('<p>O αριθμός παρακολούθησης είναι %s.</p>', 'stackprime'), $tracking_url );
 			}
 		}
 	}

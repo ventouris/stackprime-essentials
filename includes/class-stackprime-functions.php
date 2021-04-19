@@ -303,18 +303,19 @@ class Stackprime_Functions {
 		  if ( ! current_user_can( 'manage_woocommerce', $post_id ) )
 			  return $post_id;
 	  
+		
+		
+			/* OK, its safe for us to save the data now. */
+		
+			$data = array("company"=> sanitize_text_field( $_POST['tracking_number_company'] ),
+							"tracking_number" => sanitize_text_field( $_POST['tracking_number'] )
+						);
+		
+			// Update the meta field in the database.
+			update_post_meta( $post_id, '_tracking_number_data', $data ); // choose field name
+			$order = wc_get_order(  $post_id );
+			$order->add_order_note( 'Προστέθηκε tracking number' );
 		}
-	  
-		/* OK, its safe for us to save the data now. */
-	  
-		  $data = array("company"=> sanitize_text_field( $_POST['tracking_number_company'] ),
-						  "tracking_number" => sanitize_text_field( $_POST['tracking_number'] )
-					  );
-	  
-		// Update the meta field in the database.
-		update_post_meta( $post_id, '_tracking_number_data', $data ); // choose field name
-		$order = wc_get_order(  $post_id );
-		$order->add_order_note( 'Προστέθηκε tracking number' );
 	  }
 
 	public function add_tracking_info_to_order_completed_email( $order, $sent_to_admin, $plain_text, $email ) {

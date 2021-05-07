@@ -421,5 +421,92 @@ class Stackprime_Functions {
 
 	} 
 
+	public function check_new_vs_update( $post_id ){
+		$myPost        = get_post($post_id);
+		$post_created  = new DateTime( $myPost->post_date_gmt );
+		$post_modified = new DateTime( $myPost->post_modified_gmt );
+		$diff          = $post_created->diff( $post_modified );
+		$seconds_difference = ((($diff->y * 365.25 + $diff->m * 30 + $diff->d) * 24 + $diff->h) * 60 + $diff->i)*60 + $diff->s;
+	
+		if( $seconds_difference <= 1 ){
+			return true;
+		}else{
+			return false;
+		}
+	}
+
+	public function make_greeklish($slug) {
+		$expressions = array(
+			'/[αΑ][ιίΙΊ]/u' => 'e',
+			'/[οΟΕε][ιίΙΊ]/u' => 'i',
+			'/[αΑ][υύΥΎ]([θΘκΚξΞπΠσςΣτTφΡχΧψΨ]|\s|$)/u' => 'af$1',
+			'/[αΑ][υύΥΎ]/u' => 'av',
+			'/[εΕ][υύΥΎ]([θΘκΚξΞπΠσςΣτTφΡχΧψΨ]|\s|$)/u' => 'ef$1',
+			'/[εΕ][υύΥΎ]/u' => 'ev',
+			'/[οΟ][υύΥΎ]/u' => 'ou',
+			'/(^|\s)[μΜ][πΠ]/u' => '$1b',
+			'/[μΜ][πΠ](\s|$)/u' => 'b$1',
+			'/[μΜ][πΠ]/u' => 'mp',
+			'/[νΝ][τΤ]/u' => 'nt',
+			'/[τΤ][σΣ]/u' => 'ts',
+			'/[τΤ][ζΖ]/u' => 'tz',
+			'/[γΓ][γΓ]/u' => 'ng',
+			'/[γΓ][κΚ]/u' => 'gk',
+			'/[ηΗ][υΥ]([θΘκΚξΞπΠσςΣτTφΡχΧψΨ]|\s|$)/u' => 'if$1',
+			'/[ηΗ][υΥ]/u' => 'iu',
+			'/[θΘ]/u' => 'th',
+			'/[χΧ]/u' => 'ch',
+			'/[ψΨ]/u' => 'ps',
+			'/[αά]/u' => 'a',
+			'/[βΒ]/u' => 'v',
+			'/[γΓ]/u' => 'g',
+			'/[δΔ]/u' => 'd',
+			'/[εέΕΈ]/u' => 'e',
+			'/[ζΖ]/u' => 'z',
+			'/[ηήΗΉ]/u' => 'i',
+			'/[ιίϊΙΊΪ]/u' => 'i',
+			'/[κΚ]/u' => 'k',
+			'/[λΛ]/u' => 'l',
+			'/[μΜ]/u' => 'm',
+			'/[νΝ]/u' => 'n',
+			'/[ξΞ]/u' => 'x',
+			'/[οόΟΌ]/u' => 'o',
+			'/[πΠ]/u' => 'p',
+			'/[ρΡ]/u' => 'r',
+			'/[σςΣ]/u' => 's',
+			'/[τΤ]/u' => 't',
+			'/[υύϋΥΎΫ]/u' => 'i',
+			'/[φΦ]/iu' => 'f',
+			'/[ωώ]/iu' => 'o',
+		  );
+		  
+		  $text = preg_replace( array_keys($expressions), array_values($expressions), $slug);
+		  $text = preg_replace('/\s+\D{1}(?!\S)|(?<!\S)\D{1}\s+/', '', $text);
+		  $text = preg_replace( array('/&.*?;/', '/\s+/', '/[^A-Za-z0-9_\.\-]/u'),  array(' ', '-', ''), $text );
+		  $text = filter_var(strtolower($text), FILTER_SANITIZE_URL);
+		  return $text;
+	  }	
+
+	public function slug_save_post_callback( $post_ID, $post, $update ) {
+		// allow 'publish', 'draft', 'future'
+		if ($post->post_status == 'auto-draft')
+			return;
+	
+		// only change slug when the post is created (both dates are equal)
+		if (!$this->check_new_vs_update($post_ID))
+			return;
+	
+		$new_slug = $this->make_greeklish($post->post_title);
+
+		// unhook this function to prevent infinite looping
+		remove_action( 'save_post', array($this, 'slug_save_post_callback'), 10, 3);
+		// update the post slug (WP handles unique post slug)
+		wp_update_post( array(
+			'ID' => $post_ID,
+			'post_name' => $new_slug
+		));
+		// re-hook this function
+		add_action( 'save_post', array($this,'slug_save_post_callback'), 10, 3);
+	}
 
 }

@@ -844,6 +844,19 @@ class Stackprime_Settings {
 			)
 		);
 
+		add_settings_field(
+			'greeklish_permalinks_only',
+			__( 'Enable greeklish permalinks', 'stackprime' ),
+			array( $this->functions, 'create_checkbox_input'),
+			'stackprime_misc_options',
+			'misc_options_section',
+			array(
+				'stackprime_misc_options',
+				'greeklish_permalinks_only',
+				__( 'Change permalinks from greek to greelish during post creation.', 'stackprime' ),
+			)
+		);
+
 
 		// Finally, we register the fields with WordPress
 		register_setting(
@@ -1062,6 +1075,9 @@ class Stackprime_Settings {
 		if ((isset($misc['move_styling_to_header']) ? $misc['move_styling_to_header'] : null) == "1") {
 			add_action( 'wp_head', array($this->functions, 'start_modify_html') );
 			add_action( 'wp_footer', array($this->functions, 'end_modify_html') );
+		}
+		if ((isset($misc['greeklish_permalinks_only']) ? $misc['greeklish_permalinks_only'] : null) == "1") {
+			add_action( 'save_post', array($this->functions, 'slug_save_post_callback'), 10, 3);
 		}
 		
 

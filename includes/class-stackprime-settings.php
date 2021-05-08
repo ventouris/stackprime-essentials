@@ -74,10 +74,10 @@ class Stackprime_Settings {
 			"remove_wp_logo_on_header" => "1",
 			"remove_update_available_notice" => "1",
 			"split_admin_in_sections" => "1",
-			"custom_login_page" => "0",
-			"custom_login_page_logo" => "",
-			"custom_login_page_background" => "",
-			"custom_login_page_color" => ""
+			"custom_login_page" => "1",
+			"custom_login_page_logo" => '/wp-content/plugins/stackprime-essentials/assets/img/logo.png',
+			"custom_login_page_background" =>  '/wp-content/plugins/stackprime-essentials/assets/img/login_bg.jpeg',
+			"custom_login_page_color" => "#000000"
 		);
 
 		return $defaults;

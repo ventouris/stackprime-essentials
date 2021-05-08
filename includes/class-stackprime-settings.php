@@ -88,14 +88,14 @@ class Stackprime_Settings {
 	public function default_security_options() {
 
 		$defaults = array(
-			"disable_auto_updates_core" => "",
-			"disable_auto_updates_plugins" => "",
-			"disable_auto_updates_themes" => "",
-			"disallow_file_edit" => "",
-			"disable_application_passwords" => "",
-			"remove_generator_tag" => "",
-			"remove_script_style_version_parameter" => "",
-			"disable_comment_hyperlinks" => "",
+			"disable_auto_updates_core" => "1",
+			"disable_auto_updates_plugins" => "1",
+			"disable_auto_updates_themes" => "1",
+			"disallow_file_edit" => "1",
+			"disable_application_passwords" => "1",
+			"remove_generator_tag" => "1",
+			"remove_script_style_version_parameter" => "1",
+			"disable_comment_hyperlinks" => "1",
 		);
 
 		return $defaults;
@@ -107,17 +107,17 @@ class Stackprime_Settings {
 
 		$defaults = array(
 			"limit_post_revisions" => "1",
-			"remove_wlw_manifest_link" => "",
-			"remove_rsd_link" => "",
-			"remove_shortlink" => "",
-			"remove_feed_links" => "",
-			"remove_feed_generator_tag" => "",
-			"remove_wporg_dns_prefetch" => "",
-			"disable_emojis" => "",
-			"optimize_comment_js_loading" => "",
-			"remove_recent_comments_style" => "",
+			"remove_wlw_manifest_link" => "1",
+			"remove_rsd_link" => "1",
+			"remove_shortlink" => "1",
+			"remove_feed_links" => "1",
+			"remove_feed_generator_tag" => "1",
+			"remove_wporg_dns_prefetch" => "1",
+			"disable_emojis" => "1",
+			"optimize_comment_js_loading" => "1",
+			"remove_recent_comments_style" => "1",
 			"reduce_heartbeat_interval" => "1",
-			"disable_heartbeat_in_other_pages" => ""
+			"disable_heartbeat_in_other_pages" => "1"
 		);
 
 		return $defaults;
@@ -128,6 +128,7 @@ class Stackprime_Settings {
 
 		$defaults = array(
 			"get_stock_market_data" => "",
+			"greeklish_permalinks_only" => "1"
 		);
 
 		return $defaults;
@@ -137,7 +138,9 @@ class Stackprime_Settings {
 	public function default_woocommerce_options() {
 
 		$defaults = array(
-			
+			"send_cancelled_email_to_client" => "",
+			"woo_tracking_number" => ""
+
 		);
 
 		return $defaults;

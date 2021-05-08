@@ -75,10 +75,9 @@ class Stackprime_Settings {
 			"remove_update_available_notice" => "1",
 			"split_admin_in_sections" => "1",
 			"custom_login_page" => "0",
-			"custom_login_logo" => "",
-			"custom_login_background" => "",
-			"custom_login_color" => "",
-			"custom_login_title" => "",
+			"custom_login_page_logo" => "",
+			"custom_login_page_background" => "",
+			"custom_login_page_color" => ""
 		);
 
 		return $defaults;
@@ -392,19 +391,6 @@ class Stackprime_Settings {
 				'stackprime_admin_ui_options',
 				'custom_login_page_color',
 				__( 'Add the hex color code of the custom login page' ),
-			)
-		);
-
-		add_settings_field(
-			'custom_login_page_title',
-			__( 'Login page (title)', 'stackprime' ),
-			array( $this->functions, 'create_text_input'),
-			'stackprime_admin_ui_options',
-			'admin_ui_settings_section',
-			array(
-				'stackprime_admin_ui_options',
-				'custom_login_page_title',
-				__( 'Add the title of the custom login page' ),
 			)
 		);
 

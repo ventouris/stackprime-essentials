@@ -106,8 +106,7 @@ class Stackprime_Functions {
 
  
 	public function custom_login_logo_url_title() {
-		$admin_ui = get_option('stackprime_admin_ui_options');
-		return $admin_ui["custom_login_page_title"];
+		return get_bloginfo('name');
 	}
 
 	public function disable_application_passwords() {

@@ -63,9 +63,9 @@ class Stackprime_Functions {
     	$style = '<style type="text/css">
         			#login h1 a, .login h1 a {
             			background-image: url(' . $admin_ui['custom_login_page_logo'] . ');
-						height: 160px;
-						width: 320px;
-						background-size: 160px 160px;
+						height: 120px;
+						width: auto;
+						background-size: contain;
 						background-repeat: no-repeat;
 						padding-bottom: 10px;
 					}

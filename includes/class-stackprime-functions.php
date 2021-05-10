@@ -271,6 +271,7 @@ class Stackprime_Functions {
 		
 		$companies = array(
 						"elta" => "ΕΛΤΑ",
+						"elta_courier" => "ΕΛΤΑ Courier",
 						"tnt" => "TNT",
 						"geniki" => "Γενική Ταχυδρομική",
 						"speedex" => "Speedex",

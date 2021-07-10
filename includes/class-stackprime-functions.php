@@ -323,10 +323,20 @@ class Stackprime_Functions {
 		if ( 'customer_completed_order' == $email->id || 'customer_invoice' == $email->id ) {
 			$order_id = $order->get_id();
 			$data = get_post_meta($order_id, '_tracking_number_data');
+
+			$companies = array(
+				"elta" => "ΕΛΤΑ",
+				"elta_courier" => "ΕΛΤΑ Courier",
+				"tnt" => "TNT",
+				"geniki" => "Γενική Ταχυδρομική",
+				"speedex" => "Speedex",
+				"acs" => "ACS Courier"
+			);
+
 			if (count($data) >= 1) {
-				$selected_company = $data[0]['company'];
+				$selected_company = $companies[$data[0]['company']];
 				$selected_tracking_number = $data[0]['tracking_number'];
-				$tracking_url = '<a href="https://t.17track.net/en#nums=' . $selected_tracking_number . '">' . $selected_tracking_number . '</a>';
+				$tracking_url =  $selected_tracking_number;
 			} else {
 				$selected_company = "";
 				$selected_tracking_number = "";

@@ -519,4 +519,140 @@ class Stackprime_Functions {
 		add_action( 'save_post', array($this,'slug_save_post_callback'), 10, 3);
 	}
 
+
+ 
+public function stack_my_bulk_actions( $bulk_array ) {
+ 
+	$bulk_array['stack_perc_sale_price_10'] = 'Add 10% discount';
+	$bulk_array['stack_perc_sale_price_15'] = 'Add 15% discount';
+	$bulk_array['stack_perc_sale_price_20'] = 'Add 20% discount';
+	$bulk_array['stack_perc_sale_price_25'] = 'Add 25% discount';
+	$bulk_array['stack_perc_sale_price_30'] = 'Add 30% discount';
+	$bulk_array['stack_perc_sale_price_40'] = 'Add 40% discount';
+	$bulk_array['stack_perc_sale_price_50'] = 'Add 50% discount';
+	$bulk_array['stack_stop_sale'] = 'Remove sale prices';
+	return $bulk_array;
+ 
+}
+ 
+public function stack_my_bulk_action_handler( $redirect, $doaction, $object_ids ) {
+ 
+	// let's remove query args first
+	$redirect = remove_query_arg( array( 'stack_perc_sale_price_10',
+	'stack_perc_sale_price_15',  
+		'stack_perc_sale_price_20',
+		'stack_perc_sale_price_25',  
+		'stack_perc_sale_price_30',
+		'stack_perc_sale_price_40',
+		'stack_perc_sale_price_50',
+		'stack_stop_sale' ), $redirect );
+	
+	if ( $doaction == "stack_stop_sale" ) {
+		foreach ( $object_ids as $post_id ) {
+			$product = wc_get_product( $post_id ); // Handling variable products
+			if ( $product ) {
+				if ( $product->is_type( 'variable' ) ) {
+					$variations = $product->get_available_variations();
+					foreach ( $variations as $variation ) {
+						$temp_variation = wc_get_product($variation['variation_id']);
+						$regular_price = $temp_variation->get_regular_price();
+						$temp_variation->set_price( $regular_price );
+						$temp_variation->set_sale_price( '' );
+						$temp_variation->set_date_on_sale_to( '' );
+						$temp_variation->set_date_on_sale_from( '' );
+						$temp_variation->save();
+					}	
+				} else {
+					$regular_price = $product->get_regular_price();
+					$product->set_price( $regular_price );
+					$product->set_sale_price( '' );
+					$product->set_date_on_sale_to( '' );
+					$product->set_date_on_sale_from( '' );
+					$product->save();
+				}
+				$product->save();
+				WC_Cache_Helper::get_transient_version( 'product', true );
+				delete_transient( 'wc_products_onsale' );
+			}		
+		}
+		$redirect = add_query_arg('stack_sales_removed', $redirect );
+
+	} elseif ( strpos($doaction, 'stack_perc_sale_price') !== false ) {
+		
+		if ( $doaction == 'stack_perc_sale_price_10') {
+			$multiply_price_by = 0.9;
+		} elseif ( $doaction == 'stack_perc_sale_price_15' ) {
+			$multiply_price_by = 0.85;
+		} elseif ( $doaction == 'stack_perc_sale_price_20' ) {
+			$multiply_price_by = 0.8;
+		} elseif ( $doaction == 'stack_perc_sale_price_25' ) {
+			$multiply_price_by = 0.75;
+		} elseif ( $doaction == 'stack_perc_sale_price_30' ) {
+			$multiply_price_by = 0.7;
+		} elseif ( $doaction == 'stack_perc_sale_price_40' ) {
+			$multiply_price_by = 0.6;
+		} elseif ( $doaction == 'stack_perc_sale_price_50' ) {
+			$multiply_price_by = 0.5;
+		} else {
+			$multiply_price_by = 1.0;
+		}
+
+		foreach ( $object_ids as $post_id ) {
+			$product = wc_get_product( $post_id ); // Handling variable products
+			if ( $product ) {
+				if ( $product->is_type( 'variable' ) ) {
+					$variations = $product->get_available_variations();
+					foreach ( $variations as $variation ) {
+						$temp_variation = wc_get_product($variation['variation_id']);
+						$regular_price = $temp_variation->get_regular_price();
+						$temp_variation->set_price( $regular_price * $multiply_price_by );
+						$temp_variation->set_sale_price( $regular_price * $multiply_price_by );
+						$temp_variation->set_date_on_sale_from( '' );
+						$temp_variation->save();
+					}
+				} else {
+					$regular_price = $product->get_regular_price();
+					$product->set_price( $regular_price * $multiply_price_by );
+					$product->set_sale_price( $regular_price * $multiply_price_by );
+					$product->set_date_on_sale_from( '' );
+					$product->save();
+				}
+				$product->save();
+				WC_Cache_Helper::get_transient_version( 'product', true );
+				delete_transient( 'wc_products_onsale' );
+			}		
+		}
+ 
+		// do not forget to add query args to URL because we will show notices later
+		$redirect = add_query_arg(
+			'stack_perc_sale_price_done', // just a parameter for URL (we will use $_GET['misha_make_draft_done'] )
+			count( $object_ids ), // parameter value - how much posts have been affected
+		$redirect );
+ 
+	}
+	return $redirect;
+ 
+}
+
+ 
+public function stack_bulk_action_notices() {
+
+	// but you can create an awesome message
+	if( ! empty( $_REQUEST['stack_perc_sale_price_done'] ) ) {
+ 
+		// depending on ho much posts were changed, make the message different
+		printf( '<div id="message" class="updated notice is-dismissible"><p>' .
+			_n( 'Price of %s product has been changed.',
+			'Price of %s products has been changed.',
+			intval( $_REQUEST['stack_perc_sale_price_done'] )
+		) . '</p></div>', intval( $_REQUEST['stack_perc_sale_price_done'] ) );
+ 
+	} elseif ( ! empty( $_REQUEST['stack_sales_removed'] ) ) {
+		echo '<div id="message" class="updated notice is-dismissible">
+			<p>All sales have been removed.</p>
+		</div>';
+	}
+ 
+}
+
 }

@@ -138,7 +138,8 @@ class Stackprime_Settings {
 
 		$defaults = array(
 			"send_cancelled_email_to_client" => "",
-			"woo_tracking_number" => ""
+			"woo_tracking_number" => "",
+			"woo_bulk_discounts" => ""
 
 		);
 
@@ -797,6 +798,19 @@ class Stackprime_Settings {
 			)
 		);
 
+		add_settings_field(
+			'woo_bulk_discounts',
+			__( 'Bulk discounts', 'stackprime' ),
+			array( $this->functions, 'create_checkbox_input'),
+			'stackprime_woocommerce_options',
+			'woocommerce_options_section',
+			array(
+				'stackprime_woocommerce_options',
+				'woo_bulk_discounts',
+				__( 'Add bulk discounts in quick actions on product lists', 'stackprime' ),
+			)
+		);
+
 
 		// Finally, we register the fields with WordPress
 		register_setting(
@@ -1057,6 +1071,13 @@ class Stackprime_Settings {
 			add_action( 'add_meta_boxes', array($this->functions, 'add_tracking_number_metabox'));
 			add_action( 'save_post', array($this->functions, 'tracking_number_save_postdata') );
 			add_action( 'woocommerce_email_order_details', array($this->functions, 'add_tracking_info_to_order_completed_email'), 5, 4 ); 
+		}
+
+		if ((isset($woocommerce['woo_bulk_discounts']) ? $woocommerce['woo_bulk_discounts'] : null) == "1") {
+			add_filter( 'bulk_actions-edit-product', array($this->functions,'stack_my_bulk_actions' ));
+			add_filter( 'handle_bulk_actions-edit-product', array($this->functions,'stack_my_bulk_action_handler'), 10, 3 );
+			add_action( 'admin_notices', array($this->functions,'stack_bulk_action_notices') );
+
 		}
 		
 

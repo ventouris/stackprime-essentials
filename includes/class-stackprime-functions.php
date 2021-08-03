@@ -333,8 +333,17 @@ class Stackprime_Functions {
 				"acs" => "ACS Courier"
 			);
 
+			$urls = array(
+				"elta" => "https://www.elta.gr/el-gr/%CE%B5%CE%BD%CF%84%CE%BF%CF%80%CE%B9%CF%83%CE%BC%CF%8C%CF%82%CE%B1%CE%BD%CF%84%CE%B9%CE%BA%CE%B5%CE%B9%CE%BC%CE%AD%CE%BD%CE%BF%CF%85.aspx",
+				"elta_courier" => "https://www.elta-courier.gr/search",
+				"tnt" => "https://www.tnt.com/express/el_gr/site/shipping-tools/tracking.html",
+				"geniki" => "https://www.taxydromiki.com/track",
+				"speedex" => "http://www.speedex.gr/isapohi.asp",
+				"acs" => "https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/"
+			);
+
 			if (count($data) >= 1) {
-				$selected_company = $companies[$data[0]['company']];
+				$selected_company = '<a href="' . $urls[$data[0]['company']] . '">' . $companies[$data[0]['company']] . '</a>';
 				$selected_tracking_number = $data[0]['tracking_number'];
 				$tracking_url =  $selected_tracking_number;
 			} else {

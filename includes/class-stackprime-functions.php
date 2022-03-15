@@ -161,7 +161,7 @@ class Stackprime_Functions {
 				"verify_peer_name"=>false,
 			)
 		); 
-		$html = file_get_contents('https://finance.yahoo.com/quote/' . $data['company'], false, stream_context_create($arrContextOptions));
+		$html = file_get_contents('https://finance.yahoo.com/quote/' . $data, false, stream_context_create($arrContextOptions));
 		$dom = new DOMDocument;
 		libxml_use_internal_errors(true);
 		$dom->loadHTML($html);
@@ -508,7 +508,7 @@ class Stackprime_Functions {
 
 	public function slug_save_post_callback( $post_ID, $post, $update ) {
 		// allow 'publish', 'draft', 'future'
-		if ($post->post_status == 'auto-draft')
+		if ($post->post_status == 'auto-draft' or $post->post_type == 'acf-field')
 			return;
 	
 		// only change slug when the post is created (both dates are equal)

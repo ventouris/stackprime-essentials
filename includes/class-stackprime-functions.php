@@ -193,21 +193,19 @@ class Stackprime_Functions {
 	public function stock_market_table( ) {
 		$data = json_decode(get_option("stock_market_data"));
 		
-	    $html = '<div id="stock_market">
-	   				<div class="stock_col">
-						<span class="stock_label">Last Trade Price</span>
-						<span id="price_value">' . $data->regularMarketPreviousClose . '</span>
-					</div>
-					<div class="stock_col">
-						<span class="stock_label">Market Capitalisation</span>
-						<span id="marketCap_value">' . $data->marketCap . '</span>
-					</div>
-					<div class="stock_col">
-					<span class="stock_label">Volume</span>
-					<span id="volume_value">' . $data->regularMarketVolume . '</span>
-				</div>
-				<div class="stock_date">Last update: ' . $data->date . '</div>
-			</div>';
+	    $html = '<table id="stock_market">
+					<tr>
+						<th class="stock_label">Last Trade Price</th>
+						<th class="stock_label">Market Capitalisation</th>
+						<th class="stock_label">Volume</th>
+					</tr>
+					<tr>
+						<td id="price_value">' . $data->regularMarketPreviousClose . '</td>
+						<td id="marketCap_value">' . $data->marketCap . '</td>
+						<td id="volume_value">' . $data->regularMarketVolume . '</td>
+					</tr>		
+				</table>
+				<div class="stock_date">Last update: ' . $data->date . '</div>';
 	   return $html;
 	}
 

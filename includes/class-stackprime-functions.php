@@ -564,101 +564,67 @@ public function stack_my_bulk_actions( $bulk_array ) {
 }
  
 public function stack_my_bulk_action_handler( $redirect, $doaction, $object_ids ) {
- 
+
+	$discounts = array(
+		'stack_perc_sale_price_10' => 0.9,
+		'stack_perc_sale_price_15' => 0.85,
+		'stack_perc_sale_price_20' => 0.8,
+		'stack_perc_sale_price_25' => 0.75,
+		'stack_perc_sale_price_30' => 0.7,
+		'stack_perc_sale_price_40' => 0.6,
+		'stack_perc_sale_price_50' => 0.5,
+	);
+
 	// let's remove query args first
-	$redirect = remove_query_arg( array( 'stack_perc_sale_price_10',
-	'stack_perc_sale_price_15',  
-		'stack_perc_sale_price_20',
-		'stack_perc_sale_price_25',  
-		'stack_perc_sale_price_30',
-		'stack_perc_sale_price_40',
-		'stack_perc_sale_price_50',
-		'stack_stop_sale' ), $redirect );
-	
-	if ( $doaction == "stack_stop_sale" ) {
-		foreach ( $object_ids as $post_id ) {
-			$product = wc_get_product( $post_id ); // Handling variable products
-			if ( $product ) {
-				if ( $product->is_type( 'variable' ) ) {
-					$variations = $product->get_available_variations();
-					foreach ( $variations as $variation ) {
-						$temp_variation = wc_get_product($variation['variation_id']);
-						$regular_price = $temp_variation->get_regular_price();
-						$temp_variation->set_price( $regular_price );
-						$temp_variation->set_sale_price( '' );
-						$temp_variation->set_date_on_sale_to( '' );
-						$temp_variation->set_date_on_sale_from( '' );
-						$temp_variation->save();
-					}	
-				} else {
-					$regular_price = $product->get_regular_price();
-					$product->set_price( $regular_price );
-					$product->set_sale_price( '' );
-					$product->set_date_on_sale_to( '' );
-					$product->set_date_on_sale_from( '' );
-					$product->save();
-				}
-				$product->save();
-				WC_Cache_Helper::get_transient_version( 'product', true );
-				delete_transient( 'wc_products_onsale' );
-			}		
-		}
-		$redirect = add_query_arg('stack_sales_removed', $redirect );
+	$redirect = remove_query_arg( array( 'stack_perc_sale_price_done', 'stack_sales_removed' ), $redirect );
 
-	} elseif ( strpos($doaction, 'stack_perc_sale_price') !== false ) {
-		
-		if ( $doaction == 'stack_perc_sale_price_10') {
-			$multiply_price_by = 0.9;
-		} elseif ( $doaction == 'stack_perc_sale_price_15' ) {
-			$multiply_price_by = 0.85;
-		} elseif ( $doaction == 'stack_perc_sale_price_20' ) {
-			$multiply_price_by = 0.8;
-		} elseif ( $doaction == 'stack_perc_sale_price_25' ) {
-			$multiply_price_by = 0.75;
-		} elseif ( $doaction == 'stack_perc_sale_price_30' ) {
-			$multiply_price_by = 0.7;
-		} elseif ( $doaction == 'stack_perc_sale_price_40' ) {
-			$multiply_price_by = 0.6;
-		} elseif ( $doaction == 'stack_perc_sale_price_50' ) {
-			$multiply_price_by = 0.5;
-		} else {
-			$multiply_price_by = 1.0;
-		}
-
-		foreach ( $object_ids as $post_id ) {
-			$product = wc_get_product( $post_id ); // Handling variable products
-			if ( $product ) {
-				if ( $product->is_type( 'variable' ) ) {
-					$variations = $product->get_available_variations();
-					foreach ( $variations as $variation ) {
-						$temp_variation = wc_get_product($variation['variation_id']);
-						$regular_price = $temp_variation->get_regular_price();
-						$temp_variation->set_price( $regular_price * $multiply_price_by );
-						$temp_variation->set_sale_price( $regular_price * $multiply_price_by );
-						$temp_variation->set_date_on_sale_from( '' );
-						$temp_variation->save();
-					}
-				} else {
-					$regular_price = $product->get_regular_price();
-					$product->set_price( $regular_price * $multiply_price_by );
-					$product->set_sale_price( $regular_price * $multiply_price_by );
-					$product->set_date_on_sale_from( '' );
-					$product->save();
-				}
-				$product->save();
-				WC_Cache_Helper::get_transient_version( 'product', true );
-				delete_transient( 'wc_products_onsale' );
-			}		
-		}
- 
-		// do not forget to add query args to URL because we will show notices later
-		$redirect = add_query_arg(
-			'stack_perc_sale_price_done', // just a parameter for URL (we will use $_GET['misha_make_draft_done'] )
-			count( $object_ids ), // parameter value - how much posts have been affected
-		$redirect );
- 
+	if ( 'stack_stop_sale' !== $doaction && ! isset( $discounts[ $doaction ] ) ) {
+		return $redirect;
 	}
-	return $redirect;
+
+	$multiply_price_by = isset( $discounts[ $doaction ] ) ? $discounts[ $doaction ] : null;
+
+	foreach ( $object_ids as $post_id ) {
+		$product = wc_get_product( $post_id );
+		if ( ! $product ) {
+			continue;
+		}
+
+		// get_children() includes out of stock and hidden variations and is much cheaper
+		// than get_available_variations(), which builds the full frontend data.
+		$targets = $product->is_type( 'variable' ) ? array_filter( array_map( 'wc_get_product', $product->get_children() ) ) : array( $product );
+
+		foreach ( $targets as $target ) {
+			$regular_price = $target->get_regular_price();
+
+			if ( null === $multiply_price_by ) {
+				$target->set_price( $regular_price );
+				$target->set_sale_price( '' );
+				$target->set_date_on_sale_to( '' );
+				$target->set_date_on_sale_from( '' );
+			} else {
+				if ( '' === $regular_price ) {
+					continue;
+				}
+				$sale_price = wc_format_decimal( (float) $regular_price * $multiply_price_by, wc_get_price_decimals() );
+				$target->set_price( $sale_price );
+				$target->set_sale_price( $sale_price );
+				$target->set_date_on_sale_from( '' );
+			}
+			// Saving a variation schedules a sync of its parent's prices.
+			$target->save();
+		}
+	}
+
+	WC_Cache_Helper::get_transient_version( 'product', true );
+	delete_transient( 'wc_products_onsale' );
+
+	if ( null === $multiply_price_by ) {
+		return add_query_arg( 'stack_sales_removed', 1, $redirect );
+	}
+
+	// do not forget to add query args to URL because we will show notices later
+	return add_query_arg( 'stack_perc_sale_price_done', count( $object_ids ), $redirect );
  
 }
 

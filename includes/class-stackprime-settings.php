@@ -1055,16 +1055,12 @@ class Stackprime_Settings {
 
 		$shortcodes = get_option('stackprime_shortcodes_options');
 		if ((isset($shortcodes['get_stock_market_data']) ? $shortcodes['get_stock_market_data'] : null) == "1") {
-			add_action( 'wp', array($this->functions, 'update_stock_market') );
-			add_action( 'get_stock_market_daily_data', array($this->functions, 'get_stock_market_data'), 1, 1 );
+			$this->functions->update_stock_market();
+			add_action( 'get_stock_market_daily_data', array($this->functions, 'get_stock_market_data'), 1, 0 );
 			add_shortcode( 'stockmarkettable', array($this->functions, 'stock_market_table') );
 		}
-
-		if ((isset($performance['get_stock_market_data']) ? $shortcodes['get_stock_market_data'] : "0") == "0") {
-			wp_unschedule_event( time(), 'daily', 'get_stock_market_daily_data', array( "company" => $shortcodes["get_stock_market_data_company"]) );
-			remove_action('daily', array($this->functions, 'remove_update_stock_market'));
-
-		}
+		// Unschedule the cron event when the option is turned off, instead of checking on every request.
+		add_action( 'update_option_stackprime_shortcodes_options', array($this->functions, 'stock_market_options_updated'), 10, 2 );
 
 		$woocommerce = get_option('stackprime_woocommerce_options');
 		if ((isset($woocommerce['send_cancelled_email_to_client']) ? $woocommerce['send_cancelled_email_to_client'] : null) == "1") {

@@ -141,31 +141,45 @@ class Stackprime_Functions {
 
 
 	public function update_stock_market() {
-		$shortcodes = get_option('stackprime_shortcodes_options');
-
-		if ( !wp_next_scheduled( 'get_stock_market_daily_data', array( "company" => $shortcodes["get_stock_market_data_company"]) ) ) {
-			wp_schedule_event( time(), 'daily', 'get_stock_market_daily_data', array( "company" => $shortcodes["get_stock_market_data_company"]) );
+		if ( ! wp_next_scheduled( 'get_stock_market_daily_data' ) ) {
+			// Older versions scheduled the event with the company as an argument; clear those first.
+			wp_unschedule_hook( 'get_stock_market_daily_data' );
+			wp_schedule_event( time(), 'daily', 'get_stock_market_daily_data' );
 		}
 	}
 
 	public function remove_update_stock_market() {
-		$shortcodes = get_option('stackprime_shortcodes_options');
-		wp_clear_scheduled_hook("get_stock_market_daily_data",  array( "company" => $shortcodes["get_stock_market_data_company"]));
-
+		wp_unschedule_hook( 'get_stock_market_daily_data' );
 	}
 
-	public function get_stock_market_data( $data ) {
-		
-		$arrContextOptions=array(
-			"ssl"=>array(
-				"verify_peer"=>false,
-				"verify_peer_name"=>false,
-			)
-		); 
-		$html = file_get_contents('https://finance.yahoo.com/quote/' . $data, false, stream_context_create($arrContextOptions));
+	public function stock_market_options_updated( $old_value, $value ) {
+		$enabled = is_array( $value ) && isset( $value['get_stock_market_data'] ) && "1" == $value['get_stock_market_data'];
+		if ( ! $enabled ) {
+			$this->remove_update_stock_market();
+		}
+	}
+
+	public function get_stock_market_data() {
+		$shortcodes = get_option('stackprime_shortcodes_options');
+		$company = is_array( $shortcodes ) && ! empty( $shortcodes['get_stock_market_data_company'] ) ? $shortcodes['get_stock_market_data_company'] : '';
+		if ( '' === $company ) {
+			return;
+		}
+
+		$response = wp_remote_get( 'https://finance.yahoo.com/quote/' . rawurlencode( $company ), array( 'timeout' => 15 ) );
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return;
+		}
+		$html = wp_remote_retrieve_body( $response );
+		if ( '' === $html ) {
+			return;
+		}
+
+		$volume = $prevClose = $marketCap = null;
 		$dom = new DOMDocument;
 		libxml_use_internal_errors(true);
 		$dom->loadHTML($html);
+		libxml_clear_errors();
  		$arr = $dom->getElementsByTagName("td"); 
 		foreach($arr as $item) { 
 			$td = $item->getAttribute("data-test");
@@ -186,13 +200,16 @@ class Stackprime_Functions {
 					"regularMarketVolume"=>$volume
 				)
 			);
-			update_option( 'stock_market_data', $data);	
+			update_option( 'stock_market_data', $data, false );
 		}
 
 	}
 
 	public function stock_market_table( ) {
-		$data = json_decode(get_option("stock_market_data"));
+		$data = json_decode( (string) get_option( "stock_market_data", '' ) );
+		if ( ! is_object( $data ) ) {
+			return '';
+		}
 		
 	    $html = '<table id="stock_market">
 					<tr>
@@ -201,12 +218,12 @@ class Stackprime_Functions {
 						<th class="stock_label">Volume</th>
 					</tr>
 					<tr>
-						<td id="price_value">' . $data->regularMarketPreviousClose . '</td>
-						<td id="marketCap_value">' . $data->marketCap . '</td>
-						<td id="volume_value">' . $data->regularMarketVolume . '</td>
+						<td id="price_value">' . esc_html( $data->regularMarketPreviousClose ) . '</td>
+						<td id="marketCap_value">' . esc_html( $data->marketCap ) . '</td>
+						<td id="volume_value">' . esc_html( $data->regularMarketVolume ) . '</td>
 					</tr>		
 				</table>
-				<div class="stock_date">Last update: ' . $data->date . '</div>';
+				<div class="stock_date">Last update: ' . esc_html( $data->date ) . '</div>';
 	   return $html;
 	}
 

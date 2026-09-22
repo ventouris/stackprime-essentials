@@ -2,6 +2,8 @@
 
 class Smashing_Updater {
 
+	const CACHE_KEY = 'stackprime_github_release';
+
 	private $file;
 
 	private $plugin;
@@ -21,6 +23,8 @@ class Smashing_Updater {
 	public function __construct( $file ) {
 
 		$this->file = $file;
+		// Needed before admin_init, since WordPress checks for plugin updates on admin_init too.
+		$this->basename = plugin_basename( $file );
 
 		add_action( 'admin_init', array( $this, 'set_plugin_properties' ) );
 
@@ -28,9 +32,17 @@ class Smashing_Updater {
 	}
 
 	public function set_plugin_properties() {
-		$this->plugin	= get_plugin_data( $this->file );
-		$this->basename = plugin_basename( $this->file );
-		$this->active	= is_plugin_active( $this->basename );
+		$this->active = is_plugin_active( $this->basename );
+	}
+
+	private function get_plugin_data() {
+		if ( is_null( $this->plugin ) ) {
+			if ( ! function_exists( 'get_plugin_data' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+			$this->plugin = get_plugin_data( $this->file, false, false );
+		}
+		return $this->plugin;
 	}
 
 	public function set_username( $username ) {
@@ -45,134 +57,153 @@ class Smashing_Updater {
 		$this->authorize_token = $token;
 	}
 
+	/**
+	 * Fetch the latest release from GitHub, cached in a transient so the API is not
+	 * hit on every update check. Returns null when no valid release is available.
+	 */
 	private function get_repository_info() {
-	    if ( is_null( $this->github_response ) ) { // Do we have a response?
-		$args = array();
-	        $request_uri = sprintf( 'https://api.github.com/repos/%s/%s/releases', $this->username, $this->repository ); // Build URI
-		    
-		$args = array();
+		if ( ! is_null( $this->github_response ) ) {
+			return $this->github_response ? $this->github_response : null;
+		}
 
-	        if( $this->authorize_token ) { // Is there an access token?
-		          $args['headers']['Authorization'] = "token {$this->authorize_token}"; // Set the headers
-	        }
+		$cached = get_site_transient( self::CACHE_KEY );
+		if ( false !== $cached ) {
+			$this->github_response = $cached;
+			return $cached ? $cached : null;
+		}
 
-	        $response = json_decode( wp_remote_retrieve_body( wp_remote_get( $request_uri, $args ) ), true ); // Get JSON and parse it
+		$request_uri = sprintf( 'https://api.github.com/repos/%s/%s/releases/latest', $this->username, $this->repository );
+		$args = array( 'timeout' => 10 );
 
-	        if( is_array( $response ) ) { // If it is an array
-	            $response = current( $response ); // Get the first item
-	        }
+		if ( $this->authorize_token ) {
+			$args['headers']['Authorization'] = "token {$this->authorize_token}";
+		}
 
-	        $this->github_response = $response; // Set it to our property
-	    }
+		$response = wp_remote_get( $request_uri, $args );
+		$release = null;
+
+		if ( ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response ) ) {
+			$body = json_decode( wp_remote_retrieve_body( $response ), true );
+			if ( is_array( $body ) && ! empty( $body['tag_name'] ) && ! empty( $body['zipball_url'] ) ) {
+				$release = $body;
+			}
+		}
+
+		// Cache failures for a shorter time, so a GitHub outage or rate limit is retried later
+		// without hammering the API. An empty string marks a cached failure.
+		set_site_transient( self::CACHE_KEY, $release ? $release : '', $release ? 6 * HOUR_IN_SECONDS : HOUR_IN_SECONDS );
+		$this->github_response = $release ? $release : '';
+
+		return $release;
+	}
+
+	private function get_release_version( $release ) {
+		return ltrim( $release['tag_name'], 'vV' );
 	}
 
 	public function initialize() {
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'modify_transient' ), 10, 1 );
 		add_filter( 'plugins_api', array( $this, 'plugin_popup' ), 10, 3);
 		add_filter( 'upgrader_post_install', array( $this, 'after_install' ), 10, 3 );
-		
+
 		// Add Authorization Token to download_package
 		add_filter( 'upgrader_pre_download',
-			function() {
+			function( $reply ) {
 				add_filter( 'http_request_args', [ $this, 'download_package' ], 15, 2 );
-				return false; // upgrader_pre_download filter default return value.
+				return $reply;
 			}
 		);
 	}
 
 	public function modify_transient( $transient ) {
 
-		if( property_exists( $transient, 'checked') ) { // Check if transient has a checked property
-
-			if( $checked = $transient->checked ) { // Did Wordpress check for updates?
-
-				$this->get_repository_info(); // Get the repo info
-
-				$out_of_date = version_compare( $this->github_response['tag_name'], $checked[ $this->basename ], 'gt' ); // Check if we're out of date
-
-				if( $out_of_date ) {
-
-					$new_files = $this->github_response['zipball_url']; // Get the ZIP
-
-					$slug = current( explode('/', $this->basename ) ); // Create valid slug
-
-					$plugin = array( // setup our plugin info
-						'url' => $this->plugin["PluginURI"],
-						'slug' => $slug,
-						'package' => $new_files,
-						'new_version' => $this->github_response['tag_name']
-					);
-
-					$transient->response[$this->basename] = (object) $plugin; // Return it in response
-				}
-			}
+		if ( ! is_object( $transient ) || empty( $transient->checked[ $this->basename ] ) ) {
+			return $transient;
 		}
 
-		return $transient; // Return filtered transient
+		$release = $this->get_repository_info();
+		if ( ! $release ) {
+			return $transient;
+		}
+
+		$new_version = $this->get_release_version( $release );
+
+		if ( version_compare( $new_version, $transient->checked[ $this->basename ], 'gt' ) ) {
+			$plugin_data = $this->get_plugin_data();
+
+			$transient->response[ $this->basename ] = (object) array(
+				'url'         => $plugin_data['PluginURI'],
+				'slug'        => dirname( $this->basename ),
+				'plugin'      => $this->basename,
+				'package'     => $release['zipball_url'],
+				'new_version' => $new_version,
+			);
+		}
+
+		return $transient;
 	}
 
 	public function plugin_popup( $result, $action, $args ) {
 
-		if( ! empty( $args->slug ) ) { // If there is a slug
-			
-			if( $args->slug == current( explode( '/' , $this->basename ) ) ) { // And it's our slug
-
-				$this->get_repository_info(); // Get our repo info
-
-				// Set it to an array
-				$plugin = array(
-					'name'				=> $this->plugin["Name"],
-					'slug'				=> $this->basename,
-					'requires'					=> '3.3',
-					'tested'						=> '4.4.1',
-					'rating'						=> '100.0',
-					'num_ratings'				=> '10823',
-					'downloaded'				=> '14249',
-					'added'							=> '2016-01-05',
-					'version'			=> $this->github_response['tag_name'],
-					'author'			=> $this->plugin["AuthorName"],
-					'author_profile'	=> $this->plugin["AuthorURI"],
-					'last_updated'		=> $this->github_response['published_at'],
-					'homepage'			=> $this->plugin["PluginURI"],
-					'short_description' => $this->plugin["Description"],
-					'sections'			=> array(
-						'Description'	=> $this->plugin["Description"],
-						'Updates'		=> $this->github_response['body'],
-					),
-					'download_link'		=> $this->github_response['zipball_url']
-				);
-
-				return (object) $plugin; // Return the data
-			}
-
+		if ( 'plugin_information' !== $action || empty( $args->slug ) || $args->slug !== dirname( $this->basename ) ) {
+			return $result;
 		}
-		return $result; // Otherwise return default
+
+		$release = $this->get_repository_info();
+		if ( ! $release ) {
+			return $result;
+		}
+
+		$plugin_data = $this->get_plugin_data();
+
+		return (object) array(
+			'name'              => $plugin_data['Name'],
+			'slug'              => dirname( $this->basename ),
+			'version'           => $this->get_release_version( $release ),
+			'author'            => $plugin_data['AuthorName'],
+			'author_profile'    => $plugin_data['AuthorURI'],
+			'last_updated'      => isset( $release['published_at'] ) ? $release['published_at'] : '',
+			'homepage'          => $plugin_data['PluginURI'],
+			'short_description' => $plugin_data['Description'],
+			'sections'          => array(
+				'Description' => $plugin_data['Description'],
+				'Updates'     => isset( $release['body'] ) ? $release['body'] : '',
+			),
+			'download_link'     => $release['zipball_url'],
+		);
 	}
-	
+
 	public function download_package( $args, $url ) {
 
 		if ( null !== $args['filename'] ) {
-			if( $this->authorize_token ) { 
+			if( $this->authorize_token && false !== strpos( $url, $this->username . '/' . $this->repository ) ) {
 				$args = array_merge( $args, array( "headers" => array( "Authorization" => "token {$this->authorize_token}" ) ) );
 			}
 		}
-		
+
 		remove_filter( 'http_request_args', [ $this, 'download_package' ] );
 
 		return $args;
 	}
 
 	public function after_install( $response, $hook_extra, $result ) {
+		// This filter runs for every plugin/theme install and update, so only touch our own package.
+		if ( empty( $hook_extra['plugin'] ) || $hook_extra['plugin'] !== $this->basename ) {
+			return $response;
+		}
+
 		global $wp_filesystem; // Get global FS object
 
-		$install_directory = plugin_dir_path( $this->file ); // Our plugin directory
-		$wp_filesystem->move( $result['destination'], $install_directory ); // Move files to the plugin dir
-		$result['destination'] = $install_directory; // Set the destination for the rest of the stack
+		// GitHub zipballs extract to "user-repo-sha", so move the files back to the plugin dir.
+		$install_directory = plugin_dir_path( $this->file );
+		$wp_filesystem->move( $result['destination'], $install_directory );
+
+		delete_site_transient( self::CACHE_KEY );
 
 		if ( $this->active ) { // If it was active
 			activate_plugin( $this->basename ); // Reactivate
 		}
 
-		return $result;
+		return $response;
 	}
 }

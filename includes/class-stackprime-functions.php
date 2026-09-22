@@ -224,24 +224,30 @@ class Stackprime_Functions {
 		echo preg_replace('#<style>(.*?)</style>#is', '', $html);
 	 }
 
-	public function send_email_to_customer_on_cancelled_order_in_woocommerce() {
-		load_plugin_textdomain( 'send-email-to-customer-on-cancelled-order-in-woocommerce', FALSE, basename( dirname( __FILE__ ) ) . '/languages/' );
-	}
-
 	public function seccow_send_email( $order_id, $old_status, $new_status, $order ){
-		if ( $new_status == 'cancelled' || $new_status == 'failed' ){
-			$wc_emails = WC()->mailer()->get_emails(); 
-			$email_cliente = $order->get_billing_email(); 
+		$email_classes = array(
+			'cancelled' => 'WC_Email_Cancelled_Order',
+			'failed'    => 'WC_Email_Failed_Order',
+		);
+
+		if ( ! isset( $email_classes[ $new_status ] ) ) {
+			return;
 		}
-	
-		if ( $new_status == 'cancelled' ) {
-			$wc_emails['WC_Email_Cancelled_Order']->recipient .= ',' . $email_cliente;
-			$wc_emails['WC_Email_Cancelled_Order']->trigger( $order_id );
-		} 
-		elseif ( $new_status == 'failed' ) {
-			$wc_emails['WC_Email_Failed_Order']->recipient .= ',' . $email_cliente;
-			$wc_emails['WC_Email_Failed_Order']->trigger( $order_id );
-		} 
+
+		$customer_email = $order->get_billing_email();
+		$wc_emails = WC()->mailer()->get_emails();
+		$email = isset( $wc_emails[ $email_classes[ $new_status ] ] ) ? $wc_emails[ $email_classes[ $new_status ] ] : null;
+
+		if ( empty( $customer_email ) || ! $email ) {
+			return;
+		}
+
+		// The email objects are shared for the whole request, so send to the customer only
+		// and restore the recipient. WooCommerce already notifies the admin on its own.
+		$original_recipient = $email->recipient;
+		$email->recipient = $customer_email;
+		$email->trigger( $order_id );
+		$email->recipient = $original_recipient;
 	}
 
 

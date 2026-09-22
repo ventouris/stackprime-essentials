@@ -1063,7 +1063,6 @@ class Stackprime_Settings {
 
 		$woocommerce = get_option('stackprime_woocommerce_options');
 		if ((isset($woocommerce['send_cancelled_email_to_client']) ? $woocommerce['send_cancelled_email_to_client'] : null) == "1") {
-			add_action( 'plugins_loaded', array($this->functions, 'send_email_to_customer_on_cancelled_order_in_woocommerce') );
 			add_action('woocommerce_order_status_changed', array($this->functions, 'seccow_send_email'), 10, 4 );
 		}
 

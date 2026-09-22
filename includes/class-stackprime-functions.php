@@ -251,91 +251,104 @@ class Stackprime_Functions {
 	}
 
 
-	public function add_tracking_number_metabox( $post ) {
-
-		    add_meta_box(
-		            'Meta Box',
-		            'Tracking number',
-		            array($this, 'show_tracking_number'), 
-		            'shop_order', 
-		            'side',
-		            'high'
-		        );
-		}
-
-	public function show_tracking_number( $post ) {
-		$data = get_post_meta($post->ID, '_tracking_number_data');
-		if (count($data) >= 1) {
-			$selected_company = $data[0]['company'];
-			$selected_tracking_number = $data[0]['tracking_number'];
-		} else {
-			$selected_company = "";
-			$selected_tracking_number = "";
-		};
-		
-		$companies = array(
-						"elta" => "ΕΛΤΑ",
-						"elta_courier" => "ΕΛΤΑ Courier",
-						"tnt" => "TNT",
-						"geniki" => "Γενική Ταχυδρομική",
-						"speedex" => "Speedex",
-						"acs" => "ACS Courier"
-					);
-		$courier_select = '<select name="tracking_number_company">
-						<option disalbed="disabled">Choose Courier</option>';
-		
-		foreach ($companies as $key => $val) {
-			$courier_select .= '<option ' . ($key == $selected_company ? 'selected = "selected"' : "") . ' value="' . $key . '">' . $val . '</option>';
-		};
-		$courier_select .= '</select>';
-		echo $courier_select;
-		
-		echo '<br><br>';
-		echo '<input type="text" name="tracking_number" placeholder="Tracking Number" value="' . $selected_tracking_number . '" />';
-	
+	private function get_tracking_companies() {
+		return array(
+			"elta" => "ΕΛΤΑ",
+			"elta_courier" => "ΕΛΤΑ Courier",
+			"tnt" => "TNT",
+			"geniki" => "Γενική Ταχυδρομική",
+			"speedex" => "Speedex",
+			"acs" => "ACS Courier"
+		);
 	}
 
-	public function tracking_number_save_postdata( $post_id ) {
+	private function get_tracking_data( $order ) {
+		$data = $order ? $order->get_meta( '_tracking_number_data', true ) : null;
+		return array(
+			'company'         => is_array( $data ) && isset( $data['company'] ) ? $data['company'] : '',
+			'tracking_number' => is_array( $data ) && isset( $data['tracking_number'] ) ? $data['tracking_number'] : '',
+		);
+	}
 
-		// If this is an autosave, our form has not been submitted, so we don't want to do anything.
-		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
-			return $post_id;
-	  
-		// Check the user's permissions. If want
-		if ( 'shop_order' == $_POST['post_type'] ) {
-	  
-		  if ( ! current_user_can( 'manage_woocommerce', $post_id ) )
-			  return $post_id;
-	  
-		
-		
-			/* OK, its safe for us to save the data now. */
-		
-			$data = array("company"=> sanitize_text_field( $_POST['tracking_number_company'] ),
-							"tracking_number" => sanitize_text_field( $_POST['tracking_number'] )
-						);
-		
-			// Update the meta field in the database.
-			update_post_meta( $post_id, '_tracking_number_data', $data ); // choose field name
-			$order = wc_get_order(  $post_id );
-			$order->add_order_note( 'Προστέθηκε tracking number' );
+	public function add_tracking_number_metabox() {
+		// With HPOS enabled orders are edited on their own screen instead of the shop_order post screen.
+		$screen = function_exists( 'wc_get_page_screen_id' ) ? wc_get_page_screen_id( 'shop-order' ) : 'shop_order';
+
+		add_meta_box(
+			'stackprime_tracking_number',
+			'Tracking number',
+			array($this, 'show_tracking_number'),
+			$screen,
+			'side',
+			'high'
+		);
+	}
+
+	public function show_tracking_number( $post_or_order ) {
+		$order = $post_or_order instanceof WP_Post ? wc_get_order( $post_or_order->ID ) : $post_or_order;
+		$data = $this->get_tracking_data( $order );
+
+		echo '<select name="tracking_number_company">';
+		echo '<option value="">Choose Courier</option>';
+		foreach ( $this->get_tracking_companies() as $key => $val ) {
+			echo '<option value="' . esc_attr( $key ) . '"' . selected( $key, $data['company'], false ) . '>' . esc_html( $val ) . '</option>';
 		}
-	  }
+		echo '</select>';
+
+		echo '<br><br>';
+		echo '<input type="text" name="tracking_number" placeholder="Tracking Number" value="' . esc_attr( $data['tracking_number'] ) . '" />';
+	}
+
+	/**
+	 * Hooked to woocommerce_process_shop_order_meta, which WooCommerce fires once per order
+	 * save (legacy and HPOS) after checking the nonce and the user's permissions.
+	 */
+	public function tracking_number_save_postdata( $order_id, $post_or_order = null ) {
+		if ( ! isset( $_POST['tracking_number_company'], $_POST['tracking_number'] ) ) {
+			return;
+		}
+
+		$order = $post_or_order instanceof WC_Order ? $post_or_order : wc_get_order( $order_id );
+		if ( ! $order ) {
+			return;
+		}
+
+		$company = sanitize_key( wp_unslash( $_POST['tracking_number_company'] ) );
+		if ( ! array_key_exists( $company, $this->get_tracking_companies() ) ) {
+			$company = '';
+		}
+
+		$data = array(
+			"company" => $company,
+			"tracking_number" => sanitize_text_field( wp_unslash( $_POST['tracking_number'] ) )
+		);
+
+		if ( $data === $this->get_tracking_data( $order ) ) {
+			return;
+		}
+
+		if ( '' === $data['tracking_number'] ) {
+			$order->delete_meta_data( '_tracking_number_data' );
+			$order->save();
+			return;
+		}
+
+		$order->update_meta_data( '_tracking_number_data', $data );
+		$order->save();
+		$order->add_order_note( 'Προστέθηκε tracking number' );
+	}
 
 	public function add_tracking_info_to_order_completed_email( $order, $sent_to_admin, $plain_text, $email ) {
 
 		if ( 'customer_completed_order' == $email->id || 'customer_invoice' == $email->id ) {
-			$order_id = $order->get_id();
-			$data = get_post_meta($order_id, '_tracking_number_data');
+			$data = $this->get_tracking_data( $order );
 
-			$companies = array(
-				"elta" => "ΕΛΤΑ",
-				"elta_courier" => "ΕΛΤΑ Courier",
-				"tnt" => "TNT",
-				"geniki" => "Γενική Ταχυδρομική",
-				"speedex" => "Speedex",
-				"acs" => "ACS Courier"
-			);
+			// Quit if the tracking number is empty.
+			if ( empty( $data['tracking_number'] ) ) {
+				return;
+			}
+
+			$companies = $this->get_tracking_companies();
 
 			$urls = array(
 				"elta" => "https://www.elta.gr/el-gr/%CE%B5%CE%BD%CF%84%CE%BF%CF%80%CE%B9%CF%83%CE%BC%CF%8C%CF%82%CE%B1%CE%BD%CF%84%CE%B9%CE%BA%CE%B5%CE%B9%CE%BC%CE%AD%CE%BD%CE%BF%CF%85.aspx",
@@ -346,26 +359,17 @@ class Stackprime_Functions {
 				"acs" => "https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/"
 			);
 
-			if (count($data) >= 1) {
-				$selected_company = '<a href="' . $urls[$data[0]['company']] . '">' . $companies[$data[0]['company']] . '</a>';
-				$selected_tracking_number = $data[0]['tracking_number'];
-				$tracking_url =  $selected_tracking_number;
-			} else {
-				$selected_company = "";
-				$selected_tracking_number = "";
-			};
-	
-			
-			// Quit if either tracking field is empty.
-			if ( empty( $selected_tracking_number ) ) {
-				return;
-			}
-	
+			$company_key = $data['company'];
+			$company_name = isset( $companies[ $company_key ] ) ? $companies[ $company_key ] : '';
+			$company_url = isset( $urls[ $company_key ] ) ? $urls[ $company_key ] : '';
+
 			if ( $plain_text ) {
-				printf( __("\nO αριθμός παρακολούθησης είναι %s με %s.\n", 'stackprime'), $tracking_url, $selected_company );
+				$selected_company = trim( $company_name . ' ' . $company_url );
+				printf( __("\nO αριθμός παρακολούθησης είναι %s με %s.\n", 'stackprime'), $data['tracking_number'], $selected_company );
 			}
 			else {
-				printf( __('<p>O αριθμός παρακολούθησης είναι %s με %s.</p>', 'stackprime'), $tracking_url, $selected_company );
+				$selected_company = $company_url ? '<a href="' . esc_url( $company_url ) . '">' . esc_html( $company_name ) . '</a>' : esc_html( $company_name );
+				printf( __('<p>O αριθμός παρακολούθησης είναι %s με %s.</p>', 'stackprime'), esc_html( $data['tracking_number'] ), $selected_company );
 			}
 		}
 	}

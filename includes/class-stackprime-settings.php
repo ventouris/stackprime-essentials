@@ -1068,7 +1068,7 @@ class Stackprime_Settings {
 
 		if ((isset($woocommerce['woo_tracking_number']) ? $woocommerce['woo_tracking_number'] : null) == "1") {
 			add_action( 'add_meta_boxes', array($this->functions, 'add_tracking_number_metabox'));
-			add_action( 'save_post', array($this->functions, 'tracking_number_save_postdata') );
+			add_action( 'woocommerce_process_shop_order_meta', array($this->functions, 'tracking_number_save_postdata'), 10, 2 );
 			add_action( 'woocommerce_email_order_details', array($this->functions, 'add_tracking_info_to_order_completed_email'), 5, 4 ); 
 		}
 

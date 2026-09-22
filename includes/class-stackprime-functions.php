@@ -109,8 +109,8 @@ class Stackprime_Functions {
 		return get_bloginfo('name');
 	}
 
-	public function disable_application_passwords() {
-		add_filter( 'wp_is_application_passwords_available', '__return_false' );
+	public function limit_post_revisions( $num ) {
+		return ( $num < 0 || $num > 5 ) ? 5 : $num;
 	}
 
 	public function remove_script_style_version_parameter( $src ) {
@@ -126,14 +126,15 @@ class Stackprime_Functions {
 	}
 
 	public function reduce_heartbeat_interval( $settings ) {
-		$settings['autostart'] = false;
 		$settings['interval'] = 60;
 		return $settings;
 	}
 	
 	public function disable_heartbeat_unless_post_edit_screen() {
 		global $pagenow;
-		if ( $pagenow != 'post.php' && $pagenow != 'post-new.php' )
+		// Heartbeat handles post/order locking and autosave on edit screens, including the HPOS order editor.
+		$is_order_edit = 'admin.php' === $pagenow && isset( $_GET['page'] ) && 'wc-orders' === $_GET['page'];
+		if ( $pagenow != 'post.php' && $pagenow != 'post-new.php' && ! $is_order_edit )
 			wp_deregister_script('heartbeat');
 	}
 	

@@ -968,7 +968,7 @@ class Stackprime_Settings {
 		}
 
 		if ((isset($security['disable_application_passwords']) ? $security['disable_application_passwords'] : null) == "1") {
-			add_action( 'init', array($this->functions, 'disable_application_passwords') );
+			add_filter( 'wp_is_application_passwords_available', '__return_false' );
 		}
 
 		if ((isset($security['remove_generator_tag']) ? $security['remove_generator_tag'] : null) == "1") {
@@ -976,17 +976,21 @@ class Stackprime_Settings {
 		}
 
 		if ((isset($security['remove_script_style_version_parameter']) ? $security['remove_script_style_version_parameter'] : null) == "1") {
-			add_filter( 'style_loader_src',  array($this->functions, 'remove_script_style_version_parameter') , 9999 );
-			add_filter( 'script_loader_src', array($this->functions, 'remove_script_style_version_parameter') , 9999 );
+			// Only on the front end: in wp-admin the version is needed to bust the browser cache after updates.
+			if ( ! is_admin() ) {
+				add_filter( 'style_loader_src',  array($this->functions, 'remove_script_style_version_parameter') , 9999 );
+				add_filter( 'script_loader_src', array($this->functions, 'remove_script_style_version_parameter') , 9999 );
+			}
 		}
 
 		if ((isset($security['disable_comment_hyperlinks']) ? $security['disable_comment_hyperlinks'] : null) == "1") {
-			add_filter( 'show_recent_comments_widget_style', '__return_false' );
+			remove_filter( 'comment_text', 'make_clickable', 9 );
 		}
 		
 		$performance = get_option('stackprime_performance_options');
 		if ((isset($performance['limit_post_revisions']) ? $performance['limit_post_revisions'] : null) == "1") {
-			defined( 'WP_POST_REVISIONS' ) || define( 'WP_POST_REVISIONS', 5 );
+			// WP_POST_REVISIONS is already defined by core before init, so use the filter instead.
+			add_filter( 'wp_revisions_to_keep', array($this->functions, 'limit_post_revisions') );
 		}
 
 		if ((isset($performance['remove_wlw_manifest_link']) ? $performance['remove_wlw_manifest_link'] : null) == "1") {
@@ -1045,7 +1049,8 @@ class Stackprime_Settings {
 		}
 
 		if ((isset($performance['disable_heartbeat_in_other_pages']) ? $performance['disable_heartbeat_in_other_pages'] : null) == "1") {
-			add_action( 'init', array($this->functions, 'disable_heartbeat_unless_post_edit_screen'), 1 );
+			// We are already running on init, so call it directly.
+			$this->functions->disable_heartbeat_unless_post_edit_screen();
 		}
 
 		$shortcodes = get_option('stackprime_shortcodes_options');

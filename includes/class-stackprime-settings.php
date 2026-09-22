@@ -94,7 +94,7 @@ class Stackprime_Settings {
 	public function default_security_options() {
 
 		$defaults = array(
-			"disable_auto_updates_core" => "1",
+			"disable_auto_updates_core" => "",
 			"disable_auto_updates_plugins" => "1",
 			"disable_auto_updates_themes" => "1",
 			"disallow_file_edit" => "1",
@@ -134,7 +134,7 @@ class Stackprime_Settings {
 
 		$defaults = array(
 			"get_stock_market_data" => "",
-			"greeklish_permalinks_only" => "1"
+			"get_stock_market_data_company" => ""
 		);
 
 		return $defaults;
@@ -158,6 +158,7 @@ class Stackprime_Settings {
 
 		$defaults = array(
 			"move_styling_to_header" => "",
+			"greeklish_permalinks_only" => "1",
 		);
 
 		return $defaults;
@@ -405,7 +406,8 @@ class Stackprime_Settings {
 
 		register_setting(
 			'stackprime_admin_ui_options',
-			'stackprime_admin_ui_options'
+			'stackprime_admin_ui_options',
+			array( 'sanitize_callback' => array( $this->functions, 'sanitize_options' ) )
 		);
 
 	} 
@@ -433,7 +435,7 @@ class Stackprime_Settings {
 			array(
 				'stackprime_security_options',
 				'disable_auto_updates_core',
-				__( 'Disable the Core auto-update system completely for WordPress, plugin and theme updates. Enabling this option will overwrite the individual Plugin and Theme settings below.', 'stackprime' ),
+				__( 'Disable the Core auto-update system completely for WordPress, plugin and theme updates. Enabling this option will overwrite the individual Plugin and Theme settings below. Warning: this also blocks automatic WordPress security releases.', 'stackprime' ),
 			)
 		);
 
@@ -531,7 +533,8 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_security_options',
-			'stackprime_security_options'
+			'stackprime_security_options',
+			array( 'sanitize_callback' => array( $this->functions, 'sanitize_options' ) )
 		);
 
 	} 
@@ -710,7 +713,8 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_performance_options',
-			'stackprime_performance_options'
+			'stackprime_performance_options',
+			array( 'sanitize_callback' => array( $this->functions, 'sanitize_options' ) )
 		);
 
 	} 
@@ -760,7 +764,8 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_shortcodes_options',
-			'stackprime_shortcodes_options'
+			'stackprime_shortcodes_options',
+			array( 'sanitize_callback' => array( $this->functions, 'sanitize_options' ) )
 		);
 
 	} 
@@ -788,7 +793,7 @@ class Stackprime_Settings {
 			array(
 				'stackprime_woocommerce_options',
 				'send_cancelled_email_to_client',
-				__( 'By default, Woocommerce sends an email only on admins for cancelled orders. With this, the same email will be sent to the client', 'stackprime' ),
+				__( 'Send the customer an email when their order is cancelled or fails. Enables WooCommerce\'s own customer "Cancelled order" and "Failed order" emails (customise them in WooCommerce > Settings > Emails).', 'stackprime' ),
 			)
 		);
 
@@ -822,7 +827,8 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_woocommerce_options',
-			'stackprime_woocommerce_options'
+			'stackprime_woocommerce_options',
+			array( 'sanitize_callback' => array( $this->functions, 'sanitize_options' ) )
 		);
 
 	} 
@@ -871,7 +877,8 @@ class Stackprime_Settings {
 		// Finally, we register the fields with WordPress
 		register_setting(
 			'stackprime_misc_options',
-			'stackprime_misc_options'
+			'stackprime_misc_options',
+			array( 'sanitize_callback' => array( $this->functions, 'sanitize_options' ) )
 		);
 
 	} 
@@ -987,6 +994,7 @@ class Stackprime_Settings {
 			if ( ! is_admin() ) {
 				add_filter( 'style_loader_src',  array($this->functions, 'remove_script_style_version_parameter') , 9999 );
 				add_filter( 'script_loader_src', array($this->functions, 'remove_script_style_version_parameter') , 9999 );
+				add_filter( 'script_module_loader_src', array($this->functions, 'remove_script_style_version_parameter') , 9999 );
 			}
 		}
 
@@ -1071,6 +1079,10 @@ class Stackprime_Settings {
 
 		$woocommerce = get_option('stackprime_woocommerce_options');
 		if ((isset($woocommerce['send_cancelled_email_to_client']) ? $woocommerce['send_cancelled_email_to_client'] : null) == "1") {
+			// WooCommerce's own customer cancelled/failed emails (off by default).
+			add_filter( 'woocommerce_email_enabled_customer_cancelled_order', '__return_true' );
+			add_filter( 'woocommerce_email_enabled_customer_failed_order', '__return_true' );
+			// Fallback for WooCommerce versions without those emails.
 			add_action('woocommerce_order_status_changed', array($this->functions, 'seccow_send_email'), 10, 4 );
 		}
 

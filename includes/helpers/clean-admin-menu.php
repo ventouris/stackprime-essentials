@@ -106,3 +106,11 @@ function stackprime_admin_menu_split_style() {
 	echo "<style>#adminmenu {margin-top: 0;}
 	#adminmenu li.wp-menu-separator {border-bottom: 1px solid #F1F1F1;}</style>";
 }
+// ------------------------
+// Keep Menu Order Filter
+// ------------------------
+// (array of menu item names not to move automatically)
+add_filter( 'admin_menu_keep_positions', 'stackprime_admin_menu_keep_positions' );
+function stackprime_admin_menu_keep_positions( $keep ) {
+	return array_merge( $keep, array( 'prototasq' ) );
+}

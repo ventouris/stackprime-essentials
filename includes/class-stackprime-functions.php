@@ -123,6 +123,9 @@ class Stackprime_Functions {
 	}
 
 	public function optimize_comment_js_loading() {
+		if ( is_admin() ) {
+			return;
+		}
 		if( is_singular() && comments_open() && get_comments_number() > 0 && get_option( 'thread_comments' ) === '1' ){
 			wp_enqueue_script( 'comment-reply' );
 		} else {
@@ -139,8 +142,11 @@ class Stackprime_Functions {
 		global $pagenow;
 		// Heartbeat handles post/order locking and autosave on edit screens, including the HPOS order editor.
 		$is_order_edit = 'admin.php' === $pagenow && isset( $_GET['page'] ) && 'wc-orders' === $_GET['page'];
-		if ( $pagenow != 'post.php' && $pagenow != 'post-new.php' && ! $is_order_edit )
+		if ( $pagenow != 'post.php' && $pagenow != 'post-new.php' && ! $is_order_edit ) {
 			wp_deregister_script('heartbeat');
+			// The session-expired login modal depends on Heartbeat and cannot work without it.
+			add_filter( 'wp_auth_check_load', '__return_false' );
+		}
 	}
 	
 
@@ -180,22 +186,29 @@ class Stackprime_Functions {
 			return;
 		}
 
-		$volume = $prevClose = $marketCap = null;
 		$dom = new DOMDocument;
 		libxml_use_internal_errors(true);
 		$dom->loadHTML($html);
 		libxml_clear_errors();
- 		$arr = $dom->getElementsByTagName("td"); 
-		foreach($arr as $item) { 
-			$td = $item->getAttribute("data-test");
-			if ($td == 'TD_VOLUME-value') {
-				$volume = trim(preg_replace("/[\r\n]+/", " ", $item->nodeValue));
-			} elseif ($td == "PREV_CLOSE-value") {
-				$prevClose = trim(preg_replace("/[\r\n]+/", " ", $item->nodeValue));
-			} elseif ( $td == "MARKET_CAP-value" ) {
-				$marketCap = trim(preg_replace("/[\r\n]+/", " ", $item->nodeValue));
-			} 
+
+		// Yahoo renders the quote statistics as <fin-streamer data-field="..." data-value="...">.
+		$xpath = new DOMXPath( $dom );
+		$fields = array();
+		foreach ( array( 'regularMarketPreviousClose', 'marketCap', 'regularMarketVolume' ) as $field ) {
+			$node = $xpath->query( '//*[@data-field="' . $field . '"]' )->item( 0 );
+			$value = null;
+			if ( $node ) {
+				$value = $node->getAttribute( 'data-value' );
+				if ( '' === $value ) {
+					$value = $node->nodeValue;
+				}
+				$value = trim( preg_replace( "/\s+/", " ", $value ) );
+			}
+			$fields[ $field ] = $value;
 		}
+		$prevClose = $fields['regularMarketPreviousClose'];
+		$marketCap = $fields['marketCap'];
+		$volume = $fields['regularMarketVolume'];
 		if ($volume && $prevClose && $marketCap) {
 			$data = json_encode(
 				array(
@@ -238,13 +251,15 @@ class Stackprime_Functions {
 	 
 	public function end_modify_html() {
 		$html = ob_get_clean();
-		$style = "";
-		preg_match_all('#<style>(.*?)</style>#is', $html, $matches, PREG_SET_ORDER);
-		foreach($matches as $match) {
-			$style .= $match[1];
+		// Move whole <style> tags (keeping attributes such as media or id) to where the buffer started, inside <head>.
+		$body = preg_replace('#<style\b[^>]*>.*?</style>#is', '', $html);
+		// preg_replace returns null on PCRE errors (e.g. backtrack limit on huge pages); never output an empty page.
+		if ( null === $body || ! preg_match_all('#<style\b[^>]*>.*?</style>#is', $html, $matches) ) {
+			echo $html;
+			return;
 		}
-		echo '<style>' . $style . '</style>';
-		echo preg_replace('#<style>(.*?)</style>#is', '', $html);
+		echo implode( "\n", $matches[0] );
+		echo $body;
 	 }
 
 	public function seccow_send_email( $order_id, $old_status, $new_status, $order ){
@@ -257,8 +272,15 @@ class Stackprime_Functions {
 			return;
 		}
 
-		$customer_email = $order->get_billing_email();
 		$wc_emails = WC()->mailer()->get_emails();
+
+		// Newer WooCommerce versions ship customer emails for these statuses; they are enabled
+		// through the woocommerce_email_enabled_* filters, so there is nothing to do here.
+		if ( isset( $wc_emails['WC_Email_Customer_Cancelled_Order'], $wc_emails['WC_Email_Customer_Failed_Order'] ) ) {
+			return;
+		}
+
+		$customer_email = $order->get_billing_email();
 		$email = isset( $wc_emails[ $email_classes[ $new_status ] ] ) ? $wc_emails[ $email_classes[ $new_status ] ] : null;
 
 		if ( empty( $customer_email ) || ! $email ) {
@@ -397,50 +419,33 @@ class Stackprime_Functions {
 		}
 	}
 
+	/**
+	 * Sanitize callback for all option groups: checkboxes are stored as "1", the few
+	 * text fields are sanitized according to what they hold.
+	 */
 	public function sanitize_options( $input ) {
-
-		// Define the array for the updated options
 		$output = array();
 
-		// Loop through each of the options sanitizing the data
-		foreach( $input as $key => $val ) {
+		if ( ! is_array( $input ) ) {
+			return $output;
+		}
 
-			if ( isset ( $input[$key] ) && ($val == "0" || $val == "1" )) {
-				$output[$key] = $input[$key];
+		foreach ( $input as $key => $val ) {
+			$val = is_string( $val ) ? trim( $val ) : '';
+
+			if ( in_array( $key, array( 'custom_login_page_logo', 'custom_login_page_background' ), true ) ) {
+				$output[ $key ] = esc_url_raw( $val );
+			} elseif ( 'custom_login_page_color' === $key ) {
+				$output[ $key ] = (string) sanitize_hex_color( $val );
+			} elseif ( 'get_stock_market_data_company' === $key ) {
+				$output[ $key ] = strtoupper( preg_replace( '/[^A-Za-z0-9.\-\^=]/', '', $val ) );
+			} else {
+				$output[ $key ] = '1' === $val ? '1' : '';
 			}
-			else if( isset ( $input[$key] ) ) {
-				$output[$key] = esc_url_raw( strip_tags( stripslashes( $input[$key] ) ) );
-			} // end if
+		}
 
-		} // end foreach
-
-		// Return the new collection
-		return apply_filters( 'sanitize_options', $output, $input );
-
-	} 
-
-	public function validate_input( $input ) {
-
-		// Create our array for storing the validated options
-		$output = array();
-
-		// Loop through each of the incoming options
-		foreach( $input as $key => $value ) {
-
-			// Check to see if the current option has a value. If so, process it.
-			if( isset( $input[$key] ) ) {
-
-				// Strip all HTML and PHP tags and properly handle quoted strings
-				$output[$key] = strip_tags( stripslashes( $input[ $key ] ) );
-
-			} // end if
-
-		} // end foreach
-
-		// Return the array processing any additional functions filtered by this action
-		return apply_filters( 'validate_input', $output, $input );
-
-	} 
+		return $output;
+	}
 
 	public function create_checkbox_input ( $args ) {
 		$category = $args[0];
@@ -644,7 +649,8 @@ public function stack_bulk_action_notices() {
 		printf( '<div id="message" class="updated notice is-dismissible"><p>' .
 			_n( 'Price of %s product has been changed.',
 			'Price of %s products has been changed.',
-			intval( $_REQUEST['stack_perc_sale_price_done'] )
+			intval( $_REQUEST['stack_perc_sale_price_done'] ),
+			'stackprime'
 		) . '</p></div>', intval( $_REQUEST['stack_perc_sale_price_done'] ) );
  
 	} elseif ( ! empty( $_REQUEST['stack_sales_removed'] ) ) {

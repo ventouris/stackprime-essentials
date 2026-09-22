@@ -30,7 +30,7 @@ class Stackprime_Deactivator {
 	 * @since    1.0.0
 	 */
 	public static function deactivate() {
-
+		wp_unschedule_hook( 'get_stock_market_daily_data' );
 	}
 
 }

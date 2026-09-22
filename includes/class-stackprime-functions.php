@@ -60,6 +60,11 @@ class Stackprime_Functions {
 
 	public function custom_login_logo() { 
 		$admin_ui = get_option('stackprime_admin_ui_options');
+		$admin_ui = array(
+			'custom_login_page_logo'       => esc_url( ! empty( $admin_ui['custom_login_page_logo'] ) ? $admin_ui['custom_login_page_logo'] : plugins_url( 'assets/img/logo.png', dirname( __FILE__ ) ) ),
+			'custom_login_page_background' => esc_url( ! empty( $admin_ui['custom_login_page_background'] ) ? $admin_ui['custom_login_page_background'] : plugins_url( 'assets/img/login_bg.jpeg', dirname( __FILE__ ) ) ),
+			'custom_login_page_color'      => ! empty( $admin_ui['custom_login_page_color'] ) && sanitize_hex_color( $admin_ui['custom_login_page_color'] ) ? sanitize_hex_color( $admin_ui['custom_login_page_color'] ) : '#000000',
+		);
     	$style = '<style type="text/css">
         			#login h1 a, .login h1 a {
             			background-image: url(' . $admin_ui['custom_login_page_logo'] . ');
@@ -458,8 +463,9 @@ class Stackprime_Functions {
 		$description = $args[2];
 
 		$options = get_option( $category );
+		$value = is_array( $options ) && isset( $options[ $input_name ] ) ? $options[ $input_name ] : '';
 
-		$html = '<input type="text" id="'.$input_name.'" name="'.$category.'['. $input_name .']" value="' . $options[$input_name] . '" />';
+		$html = '<input type="text" id="'.$input_name.'" name="'.$category.'['. $input_name .']" value="' . esc_attr( $value ) . '" />';
 		$html .= '<label for="' . $input_name . '">&nbsp;'  . $description . '</label>';
 
 		echo $html;

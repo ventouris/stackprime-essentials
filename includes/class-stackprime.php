@@ -220,14 +220,23 @@ class Stackprime {
 	}
 
 
-	public function enqueue_styles() {
+	public function enqueue_styles( $hook_suffix ) {
+
+		// Only needed on the plugin's own settings page.
+		if ( 'toplevel_page_stackprime_options' !== $hook_suffix ) {
+			return;
+		}
 
 		wp_enqueue_style( $this->plugin_name, plugin_dir_url( dirname(__FILE__) ) . 'assets/css/stackprime-admin.css', array(), $this->version, 'all' );
 
 	}
 
 
-	public function enqueue_scripts() {
+	public function enqueue_scripts( $hook_suffix ) {
+
+		if ( 'toplevel_page_stackprime_options' !== $hook_suffix ) {
+			return;
+		}
 
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( dirname(__FILE__) ) . 'assets/js/stackprime-admin.js', array( 'jquery' ), $this->version, false );
 

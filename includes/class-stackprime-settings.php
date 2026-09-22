@@ -36,6 +36,13 @@ class Stackprime_Settings {
 	private $version;
 
 	/**
+	 * Shared callbacks used by the settings and the enabled options.
+	 *
+	 * @var      Stackprime_Functions    $functions
+	 */
+	private $functions;
+
+	/**
 	 * Initialize the class and set its properties.
 	 *
 	 * @since    1.0.0
@@ -75,8 +82,8 @@ class Stackprime_Settings {
 			"remove_update_available_notice" => "1",
 			"split_admin_in_sections" => "1",
 			"custom_login_page" => "1",
-			"custom_login_page_logo" => '/wp-content/plugins/stackprime-essentials/assets/img/logo.png',
-			"custom_login_page_background" =>  '/wp-content/plugins/stackprime-essentials/assets/img/login_bg.jpeg',
+			"custom_login_page_logo" => plugins_url( 'assets/img/logo.png', dirname( __FILE__ ) ),
+			"custom_login_page_background" =>  plugins_url( 'assets/img/login_bg.jpeg', dirname( __FILE__ ) ),
 			"custom_login_page_color" => "#000000"
 		);
 

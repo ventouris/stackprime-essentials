@@ -13,19 +13,22 @@
 // ------------------------
 // Store Default Admin Menu
 // ------------------------
-add_action( '_network_admin_menu', 'admin_menu_store_default', 0 );
-add_action( '_user_admin_menu', 'admin_menu_store_default', 0 );
-add_action( '_admin_menu', 'admin_menu_store_default', 0 );
-function admin_menu_store_default() {
+add_action( '_network_admin_menu', 'stackprime_admin_menu_store_default', 0 );
+add_action( '_user_admin_menu', 'stackprime_admin_menu_store_default', 0 );
+add_action( '_admin_menu', 'stackprime_admin_menu_store_default', 0 );
+function stackprime_admin_menu_store_default() {
 	global $menu, $default_menu; $default_menu = $menu;
 }
 // ------------------------
 // Split Default Admin Menu
 // ------------------------
-add_action( 'custom_menu_order', '__return_true' );
-add_filter( 'menu_order', 'admin_menu_split_default', 20 );
-function admin_menu_split_default( $menu_order ) {
+add_filter( 'custom_menu_order', '__return_true' );
+add_filter( 'menu_order', 'stackprime_admin_menu_split_default', 20 );
+function stackprime_admin_menu_split_default( $menu_order ) {
   global $menu, $default_menu;
+	if ( ! is_array( $menu ) || ! is_array( $default_menu ) ) {
+		return $menu_order;
+	}
 	// --- set empty split menu arrays ---
   $menua = $menub = $menuc = array();
 	// --- loop the menu items ---
@@ -40,6 +43,7 @@ function admin_menu_split_default( $menu_order ) {
 		elseif ( $item[2] != 'separator1' ) {$menub[$i] = $item[2];}
 	}
 	$menua[] = 'separator1';
+	$menua_keep = $menub_keep = $menuc_keep = array();
 	// --- filter menu items whose position to keep ---
 	$keep = apply_filters( 'admin_menu_keep_positions', array());
 	// --- move Settings item to top of section! (after separator 2) ---
@@ -56,7 +60,7 @@ function admin_menu_split_default( $menu_order ) {
 	}
 	// --- get the menu items whose positions to keep ---
 	if ( count( $keep ) > 0 ) {
-		$sep = 0; $menua_keep = $menub_keep = $menuc_keep = array();
+		$sep = 0;
 		foreach ( $menu as $i => $item ) {
 			if ( $item[2] == 'separator1' ) {$sep = 1;}
 			elseif ( $item[2] == 'separator2' ) {$sep = 2;}
@@ -97,16 +101,8 @@ function admin_menu_split_default( $menu_order ) {
 // -------------------------
 // Split Menu Separator Line
 // -------------------------
-add_action( 'admin_print_styles', 'admin_menu_split_style');
-function admin_menu_split_style() {
+add_action( 'admin_print_styles', 'stackprime_admin_menu_split_style');
+function stackprime_admin_menu_split_style() {
 	echo "<style>#adminmenu {margin-top: 0;}
 	#adminmenu li.wp-menu-separator {border-bottom: 1px solid #F1F1F1;}</style>";
-}
-// ---------------------------
-// Test Keep Menu Order Filter
-// ---------------------------
-// (array of menu item names not to move automatically)
-add_filter( 'admin_menu_keep_positions', 'admin_menu_keep_test' );
-function admin_menu_keep_test( $keep ) {
-	return array_merge( $keep, array( 'prototasq' ) );
 }

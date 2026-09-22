@@ -26,3 +26,20 @@
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
+
+$stackprime_options = array(
+	'stackprime_admin_ui_options',
+	'stackprime_security_options',
+	'stackprime_performance_options',
+	'stackprime_shortcodes_options',
+	'stackprime_woocommerce_options',
+	'stackprime_misc_options',
+	'stock_market_data',
+);
+
+foreach ( $stackprime_options as $stackprime_option ) {
+	delete_option( $stackprime_option );
+}
+
+delete_site_transient( 'stackprime_github_release' );
+wp_unschedule_hook( 'get_stock_market_daily_data' );

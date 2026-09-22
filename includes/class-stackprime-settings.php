@@ -1086,7 +1086,7 @@ class Stackprime_Settings {
 			add_action( 'wp_footer', array($this->functions, 'end_modify_html') );
 		}
 		if ((isset($misc['greeklish_permalinks_only']) ? $misc['greeklish_permalinks_only'] : null) == "1") {
-			add_action( 'save_post', array($this->functions, 'slug_save_post_callback'), 10, 3);
+			add_filter( 'wp_insert_post_data', array($this->functions, 'greeklish_post_slug'), 10, 2);
 		}
 		
 

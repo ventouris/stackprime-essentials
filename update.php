@@ -1,6 +1,6 @@
 <?php
 
-class Smashing_Updater {
+class Stackprime_Updater {
 
 	const CACHE_KEY = 'stackprime_github_release';
 
@@ -9,8 +9,6 @@ class Smashing_Updater {
 	private $plugin;
 
 	private $basename;
-
-	private $active;
 
 	private $username;
 
@@ -26,13 +24,7 @@ class Smashing_Updater {
 		// Needed before admin_init, since WordPress checks for plugin updates on admin_init too.
 		$this->basename = plugin_basename( $file );
 
-		add_action( 'admin_init', array( $this, 'set_plugin_properties' ) );
-
 		return $this;
-	}
-
-	public function set_plugin_properties() {
-		$this->active = is_plugin_active( $this->basename );
 	}
 
 	private function get_plugin_data() {
@@ -104,7 +96,8 @@ class Smashing_Updater {
 	public function initialize() {
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'modify_transient' ), 10, 1 );
 		add_filter( 'plugins_api', array( $this, 'plugin_popup' ), 10, 3);
-		add_filter( 'upgrader_post_install', array( $this, 'after_install' ), 10, 3 );
+		add_filter( 'upgrader_source_selection', array( $this, 'rename_source' ), 10, 4 );
+		add_filter( 'upgrader_post_install', array( $this, 'after_install' ), 10, 2 );
 
 		// Add Authorization Token to download_package
 		add_filter( 'upgrader_pre_download',
@@ -186,22 +179,34 @@ class Smashing_Updater {
 		return $args;
 	}
 
-	public function after_install( $response, $hook_extra, $result ) {
-		// This filter runs for every plugin/theme install and update, so only touch our own package.
-		if ( empty( $hook_extra['plugin'] ) || $hook_extra['plugin'] !== $this->basename ) {
-			return $response;
+	/**
+	 * GitHub zipballs extract to "user-repo-sha", so rename the extracted folder to the
+	 * plugin's own folder before it is installed. WordPress then installs, and for manual
+	 * updates reactivates, the plugin at its usual path, in the admin and in cron alike.
+	 */
+	public function rename_source( $source, $remote_source, $upgrader, $hook_extra = array() ) {
+		global $wp_filesystem;
+
+		if ( is_wp_error( $source ) || empty( $hook_extra['plugin'] ) || $hook_extra['plugin'] !== $this->basename ) {
+			return $source;
 		}
 
-		global $wp_filesystem; // Get global FS object
+		$new_source = trailingslashit( $remote_source ) . dirname( $this->basename ) . '/';
+		if ( untrailingslashit( $source ) === untrailingslashit( $new_source ) ) {
+			return $source;
+		}
 
-		// GitHub zipballs extract to "user-repo-sha", so move the files back to the plugin dir.
-		$install_directory = plugin_dir_path( $this->file );
-		$wp_filesystem->move( $result['destination'], $install_directory );
+		if ( ! $wp_filesystem->move( $source, $new_source, true ) ) {
+			return new WP_Error( 'stackprime_rename_failed', __( 'Could not rename the downloaded plugin folder.', 'stackprime' ) );
+		}
 
-		delete_site_transient( self::CACHE_KEY );
+		return $new_source;
+	}
 
-		if ( $this->active ) { // If it was active
-			activate_plugin( $this->basename ); // Reactivate
+	public function after_install( $response, $hook_extra ) {
+		// This filter runs for every plugin/theme install and update, so only touch our own package.
+		if ( ! empty( $hook_extra['plugin'] ) && $hook_extra['plugin'] === $this->basename ) {
+			delete_site_transient( self::CACHE_KEY );
 		}
 
 		return $response;

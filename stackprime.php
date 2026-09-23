@@ -78,16 +78,15 @@ function run_stackprime() {
 	$plugin = new Stackprime();
 	$plugin->run();
 
+	// Not limited to is_admin(): WP-cron also checks for and installs plugin updates.
 	require_once plugin_dir_path(  __FILE__ ) . 'update.php' ;
-	if ( is_admin() ) {
-		$updater = new Smashing_Updater( __FILE__ );
-		$updater->set_username( 'ventouris' );
-		$updater->set_repository( 'stackprime-essentials' );
-		/*
-			$updater->authorize( 'abcdefghijk1234567890' ); // Your auth code goes here for private repos
-		*/
-		$updater->initialize();
-	}
+	$updater = new Stackprime_Updater( __FILE__ );
+	$updater->set_username( 'ventouris' );
+	$updater->set_repository( 'stackprime-essentials' );
+	/*
+		$updater->authorize( 'abcdefghijk1234567890' ); // Your auth code goes here for private repos
+	*/
+	$updater->initialize();
 
 }
 run_stackprime();

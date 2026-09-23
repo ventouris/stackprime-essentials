@@ -37,9 +37,22 @@ $stackprime_options = array(
 	'stock_market_data',
 );
 
-foreach ( $stackprime_options as $stackprime_option ) {
-	delete_option( $stackprime_option );
+// On multisite the options and the cron event are stored per site, so clean up every site.
+$stackprime_site_ids = is_multisite() ? get_sites( array( 'fields' => 'ids', 'number' => 0 ) ) : array( get_current_blog_id() );
+
+foreach ( $stackprime_site_ids as $stackprime_site_id ) {
+	if ( is_multisite() ) {
+		switch_to_blog( $stackprime_site_id );
+	}
+
+	foreach ( $stackprime_options as $stackprime_option ) {
+		delete_option( $stackprime_option );
+	}
+	wp_unschedule_hook( 'get_stock_market_daily_data' );
+
+	if ( is_multisite() ) {
+		restore_current_blog();
+	}
 }
 
 delete_site_transient( 'stackprime_github_release' );
-wp_unschedule_hook( 'get_stock_market_daily_data' );

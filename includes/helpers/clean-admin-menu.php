@@ -109,8 +109,5 @@ function stackprime_admin_menu_split_style() {
 // ------------------------
 // Keep Menu Order Filter
 // ------------------------
-// (array of menu item names not to move automatically)
-add_filter( 'admin_menu_keep_positions', 'stackprime_admin_menu_keep_positions' );
-function stackprime_admin_menu_keep_positions( $keep ) {
-	return array_merge( $keep, array( 'prototasq' ) );
-}
+// Return an array of menu slugs from the admin_menu_keep_positions filter
+// to keep those items where they are instead of moving them automatically.

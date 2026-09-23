@@ -198,12 +198,12 @@ class Stackprime_Settings {
 			} // end if/else ?>
 
 			<h2 class="nav-tab-wrapper">
-				<a href="?page=stackprime_options&tab=admin_ui_options" class="nav-tab <?php echo $active_tab == 'admin_ui_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Admin UI', 'stackprime' ); ?></a>
-				<a href="?page=stackprime_options&tab=security_options" class="nav-tab <?php echo $active_tab == 'security_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Security', 'stackprime' ); ?></a>
-				<a href="?page=stackprime_options&tab=performance_options" class="nav-tab <?php echo $active_tab == 'performance_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Performance', 'stackprime' ); ?></a>
-				<a href="?page=stackprime_options&tab=shortcodes_options" class="nav-tab <?php echo $active_tab == 'shortcodes_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Shortcodes', 'stackprime' ); ?></a>
-				<a href="?page=stackprime_options&tab=woocommerce_options" class="nav-tab <?php echo $active_tab == 'woocommerce_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Woocommerce', 'stackprime' ); ?></a>
-				<a href="?page=stackprime_options&tab=misc_options" class="nav-tab <?php echo $active_tab == 'misc_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Misc', 'stackprime' ); ?></a>
+				<a href="?page=stackprime_options&amp;tab=admin_ui_options" class="nav-tab <?php echo $active_tab == 'admin_ui_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Admin UI', 'stackprime' ); ?></a>
+				<a href="?page=stackprime_options&amp;tab=security_options" class="nav-tab <?php echo $active_tab == 'security_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Security', 'stackprime' ); ?></a>
+				<a href="?page=stackprime_options&amp;tab=performance_options" class="nav-tab <?php echo $active_tab == 'performance_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Performance', 'stackprime' ); ?></a>
+				<a href="?page=stackprime_options&amp;tab=shortcodes_options" class="nav-tab <?php echo $active_tab == 'shortcodes_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Shortcodes', 'stackprime' ); ?></a>
+				<a href="?page=stackprime_options&amp;tab=woocommerce_options" class="nav-tab <?php echo $active_tab == 'woocommerce_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Woocommerce', 'stackprime' ); ?></a>
+				<a href="?page=stackprime_options&amp;tab=misc_options" class="nav-tab <?php echo $active_tab == 'misc_options' ? 'nav-tab-active' : ''; ?>"><?php _e( 'Misc', 'stackprime' ); ?></a>
 
 			</h2>
 

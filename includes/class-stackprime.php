@@ -148,7 +148,6 @@ class Stackprime {
         $plugin_settings = new Stackprime_Settings( $this->get_plugin_name(), $this->get_version() );
 		
 		$this->loader->add_action( 'admin_enqueue_scripts', $this, 'enqueue_styles' );
-		$this->loader->add_action( 'admin_enqueue_scripts', $this, 'enqueue_scripts' );
 
         $this->loader->add_action( 'admin_menu', $plugin_settings, 'setup_plugin_options_menu' );
 		$this->loader->add_action( 'admin_init', $plugin_settings, 'initialize_admin_ui_options' );
@@ -228,17 +227,6 @@ class Stackprime {
 		}
 
 		wp_enqueue_style( $this->plugin_name, plugin_dir_url( dirname(__FILE__) ) . 'assets/css/stackprime-admin.css', array(), $this->version, 'all' );
-
-	}
-
-
-	public function enqueue_scripts( $hook_suffix ) {
-
-		if ( 'toplevel_page_stackprime_options' !== $hook_suffix ) {
-			return;
-		}
-
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( dirname(__FILE__) ) . 'assets/js/stackprime-admin.js', array( 'jquery' ), $this->version, false );
 
 	}
 

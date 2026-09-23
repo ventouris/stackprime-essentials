@@ -167,6 +167,16 @@ class Stackprime_Functions {
 		$enabled = is_array( $value ) && isset( $value['get_stock_market_data'] ) && "1" == $value['get_stock_market_data'];
 		if ( ! $enabled ) {
 			$this->remove_update_stock_market();
+			delete_option( 'stock_market_data' );
+			return;
+		}
+
+		$old_company = is_array( $old_value ) && isset( $old_value['get_stock_market_data_company'] ) ? $old_value['get_stock_market_data_company'] : '';
+		$company = isset( $value['get_stock_market_data_company'] ) ? $value['get_stock_market_data_company'] : '';
+		if ( $old_company !== $company ) {
+			// Don't show the previous company's data until the next daily run; fetch the new one right away.
+			delete_option( 'stock_market_data' );
+			wp_schedule_single_event( time(), 'get_stock_market_daily_data' );
 		}
 	}
 
@@ -212,7 +222,7 @@ class Stackprime_Functions {
 		if ($volume && $prevClose && $marketCap) {
 			$data = json_encode(
 				array(
-					"date"=>date("Y-m-d"), 
+					"date"=>wp_date("Y-m-d"),
 					"regularMarketPreviousClose"=>$prevClose,
 					"marketCap"=>$marketCap,
 					"regularMarketVolume"=>$volume
@@ -231,7 +241,7 @@ class Stackprime_Functions {
 		
 	    $html = '<table id="stock_market">
 					<tr>
-						<th class="stock_label">Last Trade Price</th>
+						<th class="stock_label">Previous Close</th>
 						<th class="stock_label">Market Capitalisation</th>
 						<th class="stock_label">Volume</th>
 					</tr>

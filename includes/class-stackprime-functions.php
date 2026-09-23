@@ -36,6 +36,13 @@ class Stackprime_Functions {
 	private $version;
 
 	/**
+	 * Page output collected by move_styles_to_head_buffer() until the buffer is closed.
+	 *
+	 * @var      string    $page_buffer
+	 */
+	private $page_buffer = '';
+
+	/**
 	 * Initialize the class and set its properties.
 	 *
 	 * @since    1.0.0
@@ -61,13 +68,15 @@ class Stackprime_Functions {
 	public function custom_login_logo() { 
 		$admin_ui = get_option('stackprime_admin_ui_options');
 		$admin_ui = array(
-			'custom_login_page_logo'       => esc_url( ! empty( $admin_ui['custom_login_page_logo'] ) ? $admin_ui['custom_login_page_logo'] : plugins_url( 'assets/img/logo.png', dirname( __FILE__ ) ) ),
-			'custom_login_page_background' => esc_url( ! empty( $admin_ui['custom_login_page_background'] ) ? $admin_ui['custom_login_page_background'] : plugins_url( 'assets/img/login_bg.jpeg', dirname( __FILE__ ) ) ),
+			// esc_url_raw, not esc_url: HTML entities such as &#038; are not decoded inside <style>.
+			// It also strips the characters (quotes, <, >, spaces) that could break out of url("").
+			'custom_login_page_logo'       => esc_url_raw( ! empty( $admin_ui['custom_login_page_logo'] ) ? $admin_ui['custom_login_page_logo'] : plugins_url( 'assets/img/logo.png', dirname( __FILE__ ) ) ),
+			'custom_login_page_background' => esc_url_raw( ! empty( $admin_ui['custom_login_page_background'] ) ? $admin_ui['custom_login_page_background'] : plugins_url( 'assets/img/login_bg.jpeg', dirname( __FILE__ ) ) ),
 			'custom_login_page_color'      => ! empty( $admin_ui['custom_login_page_color'] ) && sanitize_hex_color( $admin_ui['custom_login_page_color'] ) ? sanitize_hex_color( $admin_ui['custom_login_page_color'] ) : '#000000',
 		);
     	$style = '<style type="text/css">
         			#login h1 a, .login h1 a {
-            			background-image: url(' . $admin_ui['custom_login_page_logo'] . ');
+            			background-image: url("' . $admin_ui['custom_login_page_logo'] . '");
 						height: 120px;
 						width: auto;
 						background-size: contain;
@@ -87,7 +96,7 @@ class Stackprime_Functions {
 						width: 50vw;
 						position: absolute;
 						height: 100%;
-						background-image: url(' . $admin_ui['custom_login_page_background'] . ');
+						background-image: url("' . $admin_ui['custom_login_page_background'] . '");
 						right: 0;
 						top: 0;
 						background-repeat: no-repeat;
@@ -140,9 +149,14 @@ class Stackprime_Functions {
 	
 	public function disable_heartbeat_unless_post_edit_screen() {
 		global $pagenow;
-		// Heartbeat handles post/order locking and autosave on edit screens, including the HPOS order editor.
-		$is_order_edit = 'admin.php' === $pagenow && isset( $_GET['page'] ) && 'wc-orders' === $_GET['page'];
-		if ( $pagenow != 'post.php' && $pagenow != 'post-new.php' && ! $is_order_edit ) {
+		// Only a wp-admin option; front-end plugins that need Heartbeat enqueue it themselves.
+		if ( ! is_admin() ) {
+			return;
+		}
+		// Heartbeat handles post/order locking and autosave on edit screens, including the HPOS order
+		// editors (wc-orders, wc-orders--shop_subscription, ...), and changeset locking in the Customizer.
+		$is_order_edit = 'admin.php' === $pagenow && isset( $_GET['page'] ) && 0 === strpos( (string) $_GET['page'], 'wc-orders' );
+		if ( ! in_array( $pagenow, array( 'post.php', 'post-new.php', 'customize.php' ), true ) && ! $is_order_edit ) {
 			wp_deregister_script('heartbeat');
 			// The session-expired login modal depends on Heartbeat and cannot work without it.
 			add_filter( 'wp_auth_check_load', '__return_false' );
@@ -150,6 +164,27 @@ class Stackprime_Functions {
 	}
 	
 
+
+	/**
+	 * Drop only the s.w.org (emoji CDN) DNS prefetch, keeping the resource hints
+	 * (preconnect, preload, ...) that the theme and other plugins add.
+	 */
+	public function remove_wporg_dns_prefetch( $urls, $relation_type ) {
+		if ( 'dns-prefetch' !== $relation_type ) {
+			return $urls;
+		}
+		foreach ( $urls as $key => $url ) {
+			$href = is_array( $url ) ? ( isset( $url['href'] ) ? $url['href'] : '' ) : $url;
+			if ( false !== strpos( $href, 's.w.org' ) ) {
+				unset( $urls[ $key ] );
+			}
+		}
+		return $urls;
+	}
+
+	public function disable_emojis_tinymce( $plugins ) {
+		return is_array( $plugins ) ? array_diff( $plugins, array( 'wpemoji' ) ) : $plugins;
+	}
 
 	public function update_stock_market() {
 		if ( ! wp_next_scheduled( 'get_stock_market_daily_data' ) ) {
@@ -255,22 +290,65 @@ class Stackprime_Functions {
 	   return $html;
 	}
 
-	public function start_modify_html() {
-		ob_start();
-	 }
-	 
-	public function end_modify_html() {
-		$html = ob_get_clean();
-		// Move whole <style> tags (keeping attributes such as media or id) to where the buffer started, inside <head>.
-		$body = preg_replace('#<style\b[^>]*>.*?</style>#is', '', $html);
-		// preg_replace returns null on PCRE errors (e.g. backtrack limit on huge pages); never output an empty page.
-		if ( null === $body || ! preg_match_all('#<style\b[^>]*>.*?</style>#is', $html, $matches) ) {
-			echo $html;
+	/**
+	 * Buffer the whole page, so styles printed late in the footer (e.g. block supports
+	 * at wp_footer priority 20) are included too. PHP closes the buffer at shutdown.
+	 */
+	public function start_move_styles_to_head() {
+		if ( is_feed() || is_robots() || is_trackback() ) {
 			return;
 		}
-		echo implode( "\n", $matches[0] );
-		echo $body;
-	 }
+		$this->page_buffer = '';
+		ob_start( array( $this, 'move_styles_to_head_buffer' ) );
+	}
+
+	public function move_styles_to_head_buffer( $buffer, $phase ) {
+		// Keep partial flushes until the end, since styles can only be moved with the full page.
+		if ( $phase & PHP_OUTPUT_HANDLER_CLEAN ) {
+			$this->page_buffer = '';
+		} else {
+			$this->page_buffer .= $buffer;
+		}
+		if ( ! ( $phase & PHP_OUTPUT_HANDLER_FINAL ) ) {
+			return '';
+		}
+
+		$html = $this->page_buffer;
+		$this->page_buffer = '';
+		return $this->move_styles_to_head( $html );
+	}
+
+	/**
+	 * Move whole <style> tags (keeping attributes such as media or id) from the body to the end
+	 * of <head>. Styles inside script, noscript, template, svg and textarea are left alone,
+	 * e.g. a <noscript><style> fallback must not start applying to every visitor.
+	 */
+	public function move_styles_to_head( $html ) {
+		$head_end = stripos( $html, '</head>' );
+		if ( false === $head_end ) {
+			return $html;
+		}
+
+		$styles = array();
+		$body = preg_replace_callback(
+			'#<(script|noscript|template|svg|textarea)\b[^>]*>.*?</\1\s*>|<style\b[^>]*>.*?</style\s*>#is',
+			function ( $match ) use ( &$styles ) {
+				if ( ! empty( $match[1] ) ) {
+					return $match[0];
+				}
+				$styles[] = $match[0];
+				return '';
+			},
+			substr( $html, $head_end )
+		);
+
+		// preg_replace_callback returns null on PCRE errors (e.g. backtrack limit on huge pages); never output an empty page.
+		if ( null === $body || ! $styles ) {
+			return $html;
+		}
+
+		return substr( $html, 0, $head_end ) . implode( "\n", $styles ) . "\n" . $body;
+	}
 
 	public function seccow_send_email( $order_id, $old_status, $new_status, $order ){
 		$email_classes = array(
@@ -480,6 +558,10 @@ class Stackprime_Functions {
 			$val = is_string( $val ) ? trim( $val ) : '';
 
 			if ( in_array( $key, array( 'custom_login_page_logo', 'custom_login_page_background' ), true ) ) {
+				// A path such as "wp-content/uploads/logo.png" would otherwise become "http://wp-content/...".
+				if ( '' !== $val && false === strpos( $val, ':' ) && ! in_array( $val[0], array( '/', '#', '?' ), true ) ) {
+					$val = '/' . $val;
+				}
 				$output[ $key ] = esc_url_raw( $val );
 			} elseif ( 'custom_login_page_color' === $key ) {
 				$output[ $key ] = (string) sanitize_hex_color( $val );
@@ -604,6 +686,24 @@ class Stackprime_Functions {
 		return $data;
 	}
 
+	/**
+	 * Same as greeklish_post_slug() for new categories, tags, product categories and other terms.
+	 * Explicit slugs and existing terms are left alone.
+	 */
+	public function greeklish_term_slug( $data, $taxonomy, $args ) {
+		if ( ! empty( $args['slug'] ) || ! preg_match( '/\p{Greek}/u', $data['name'] ) ) {
+			return $data;
+		}
+
+		$slug = sanitize_title( $this->make_greeklish( $data['name'] ) );
+		if ( '' === $slug ) {
+			return $data;
+		}
+
+		$data['slug'] = wp_unique_term_slug( $slug, (object) array_merge( $args, array( 'taxonomy' => $taxonomy ) ) );
+
+		return $data;
+	}
 
  
 public function stack_my_bulk_actions( $bulk_array ) {

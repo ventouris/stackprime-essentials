@@ -287,7 +287,7 @@ class Stackprime_Settings {
 
 	public function initialize_admin_ui_options() {
 
-		if( false == get_option( 'stackprime_admin_ui_options' ) ) {
+		if( false === get_option( 'stackprime_admin_ui_options' ) ) {
 			$default_array = $this->default_admin_ui_options();
 			add_option( 'stackprime_admin_ui_options', $default_array );
 		}
@@ -373,7 +373,7 @@ class Stackprime_Settings {
 			array(
 				'stackprime_admin_ui_options',
 				'custom_login_page_logo',
-				__( 'Add the relative path of the logo image in the custom login page' ),
+				__( 'Full URL or site path of the logo image in the custom login page, e.g. /wp-content/uploads/image.png', 'stackprime' ),
 			)
 		);
 
@@ -386,7 +386,7 @@ class Stackprime_Settings {
 			array(
 				'stackprime_admin_ui_options',
 				'custom_login_page_background',
-				__( 'Add the relative path of the background image in the custom login page' ),
+				__( 'Full URL or site path of the background image in the custom login page, e.g. /wp-content/uploads/image.png', 'stackprime' ),
 			)
 		);
 
@@ -414,7 +414,7 @@ class Stackprime_Settings {
 
 	public function initialize_security_options() {
 
-		if( false == get_option( 'stackprime_security_options' ) ) {
+		if( false === get_option( 'stackprime_security_options' ) ) {
 			$default_array = $this->default_security_options();
 			add_option( 'stackprime_security_options', $default_array );
 		}
@@ -513,7 +513,7 @@ class Stackprime_Settings {
 			array(
 				'stackprime_security_options',
 				'remove_script_style_version_parameter',
-				__( 'Remove the version parameter from styles and scripts. Hides your WordPress version some more.', 'stackprime' ),
+				__( 'Remove the version parameter from front-end styles and scripts. Hides your WordPress version some more. Note: the version is what makes browsers and CDNs fetch the new file after a theme or plugin update, so without it visitors may get old CSS/JS until their cache expires.', 'stackprime' ),
 			)
 		);
 
@@ -541,7 +541,7 @@ class Stackprime_Settings {
 
 	public function initialize_performance_options() {
 
-		if( false == get_option( 'stackprime_performance_options' ) ) {
+		if( false === get_option( 'stackprime_performance_options' ) ) {
 			$default_array = $this->default_performance_options();
 			add_option( 'stackprime_performance_options', $default_array );
 		}
@@ -721,7 +721,7 @@ class Stackprime_Settings {
 
 	public function initialize_shortcodes_options() {
 
-		if( false == get_option( 'stackprime_shortcodes_options' ) ) {
+		if( false === get_option( 'stackprime_shortcodes_options' ) ) {
 			$default_array = $this->default_shortcodes_options();
 			add_option( 'stackprime_shortcodes_options', $default_array );
 		}
@@ -772,7 +772,7 @@ class Stackprime_Settings {
 
 	public function initialize_woocommerce_options() {
 
-		if( false == get_option( 'stackprime_woocommerce_options' ) ) {
+		if( false === get_option( 'stackprime_woocommerce_options' ) ) {
 			$default_array = $this->default_woocommerce_options();
 			add_option( 'stackprime_woocommerce_options', $default_array );
 		}
@@ -835,7 +835,7 @@ class Stackprime_Settings {
 
 	public function initialize_misc_options() {
 
-		if( false == get_option( 'stackprime_misc_options' ) ) {
+		if( false === get_option( 'stackprime_misc_options' ) ) {
 			$default_array = $this->default_misc_options();
 			add_option( 'stackprime_misc_options', $default_array );
 		}
@@ -869,7 +869,7 @@ class Stackprime_Settings {
 			array(
 				'stackprime_misc_options',
 				'greeklish_permalinks_only',
-				__( 'Change permalinks from greek to greelish during post creation.', 'stackprime' ),
+				__( 'Change permalinks from greek to greeklish when posts, pages, products and terms (categories, tags, ...) are created.', 'stackprime' ),
 			)
 		);
 
@@ -953,7 +953,10 @@ class Stackprime_Settings {
 		}
 
 		if ((isset($admin_ui['split_admin_in_sections']) ? $admin_ui['split_admin_in_sections'] : null) == "1") {
-			include( plugin_dir_path( __FILE__ ) . 'helpers/clean-admin-menu.php');
+			// Only hooks into the admin menu, so skip the file on front-end requests.
+			if ( is_admin() ) {
+				include_once( plugin_dir_path( __FILE__ ) . 'helpers/clean-admin-menu.php');
+			}
 		}
 
 		if ((isset($admin_ui['custom_login_page']) ? $admin_ui['custom_login_page'] : null) == "1") {
@@ -1026,7 +1029,7 @@ class Stackprime_Settings {
 		}
 
 		if ((isset($performance['remove_wporg_dns_prefetch']) ? $performance['remove_wporg_dns_prefetch'] : null) == "1") {
-			remove_action( 'wp_head', 'wp_resource_hints', 2 );
+			add_filter( 'wp_resource_hints', array($this->functions, 'remove_wporg_dns_prefetch'), 10, 2 );
 		}
 
 		if ((isset($performance['remove_feed_generator_tag']) ? $performance['remove_feed_generator_tag'] : null) == "1") {
@@ -1042,6 +1045,10 @@ class Stackprime_Settings {
 
 		if ((isset($performance['disable_emojis']) ? $performance['disable_emojis'] : null) == "1") {
 			remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
+			// Since WordPress 6.4 the styles are enqueued; print_emoji_styles is only kept for back-compat.
+			remove_action( 'wp_enqueue_scripts', 'wp_enqueue_emoji_styles' );
+			remove_action( 'admin_enqueue_scripts', 'wp_enqueue_emoji_styles' );
+			remove_action( 'enqueue_embed_scripts', 'wp_enqueue_emoji_styles' );
 			remove_action( 'wp_print_styles', 'print_emoji_styles' );
 			remove_action( 'admin_print_styles', 'print_emoji_styles' );
 			remove_action( 'admin_print_scripts', 'print_emoji_detection_script' );
@@ -1049,6 +1056,7 @@ class Stackprime_Settings {
 			remove_filter( 'the_content_feed', 'wp_staticize_emoji' );
 			remove_filter( 'comment_text_rss', 'wp_staticize_emoji' );
 			remove_filter( 'wp_mail', 'wp_staticize_emoji_for_email' );
+			add_filter( 'tiny_mce_plugins', array($this->functions, 'disable_emojis_tinymce') );
 		}
 
 		if ((isset($performance['optimize_comment_js_loading']) ? $performance['optimize_comment_js_loading'] : null) == "1") {
@@ -1102,11 +1110,11 @@ class Stackprime_Settings {
 
 		$misc = get_option('stackprime_misc_options');
 		if ((isset($misc['move_styling_to_header']) ? $misc['move_styling_to_header'] : null) == "1") {
-			add_action( 'wp_head', array($this->functions, 'start_modify_html') );
-			add_action( 'wp_footer', array($this->functions, 'end_modify_html') );
+			add_action( 'template_redirect', array($this->functions, 'start_move_styles_to_head'), PHP_INT_MAX );
 		}
 		if ((isset($misc['greeklish_permalinks_only']) ? $misc['greeklish_permalinks_only'] : null) == "1") {
 			add_filter( 'wp_insert_post_data', array($this->functions, 'greeklish_post_slug'), 10, 2);
+			add_filter( 'wp_insert_term_data', array($this->functions, 'greeklish_term_slug'), 10, 3);
 		}
 		
 

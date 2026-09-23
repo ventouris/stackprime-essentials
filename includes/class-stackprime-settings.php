@@ -793,7 +793,7 @@ class Stackprime_Settings {
 			array(
 				'stackprime_woocommerce_options',
 				'send_cancelled_email_to_client',
-				__( 'Send the customer an email when their order is cancelled or fails. Enables WooCommerce\'s own customer "Cancelled order" and "Failed order" emails (customise them in WooCommerce > Settings > Emails).', 'stackprime' ),
+				__( 'Send the customer an email when their order is cancelled or fails. Enables WooCommerce\'s own customer "Cancelled order" and "Failed order" emails (customise them in WooCommerce > Settings > Emails; once saved there, their Enable setting is respected).', 'stackprime' ),
 			)
 		);
 
@@ -1080,8 +1080,8 @@ class Stackprime_Settings {
 		$woocommerce = get_option('stackprime_woocommerce_options');
 		if ((isset($woocommerce['send_cancelled_email_to_client']) ? $woocommerce['send_cancelled_email_to_client'] : null) == "1") {
 			// WooCommerce's own customer cancelled/failed emails (off by default).
-			add_filter( 'woocommerce_email_enabled_customer_cancelled_order', '__return_true' );
-			add_filter( 'woocommerce_email_enabled_customer_failed_order', '__return_true' );
+			add_filter( 'woocommerce_email_enabled_customer_cancelled_order', array($this->functions, 'enable_customer_email_unless_configured'), 10, 3 );
+			add_filter( 'woocommerce_email_enabled_customer_failed_order', array($this->functions, 'enable_customer_email_unless_configured'), 10, 3 );
 			// Fallback for WooCommerce versions without those emails.
 			add_action('woocommerce_order_status_changed', array($this->functions, 'seccow_send_email'), 10, 4 );
 		}

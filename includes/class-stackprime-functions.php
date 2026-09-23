@@ -272,13 +272,16 @@ class Stackprime_Functions {
 			return;
 		}
 
-		$wc_emails = WC()->mailer()->get_emails();
-
 		// Newer WooCommerce versions ship customer emails for these statuses; they are enabled
 		// through the woocommerce_email_enabled_* filters, so there is nothing to do here.
-		if ( isset( $wc_emails['WC_Email_Customer_Cancelled_Order'], $wc_emails['WC_Email_Customer_Failed_Order'] ) ) {
+		// Check the files, since loading the mailer instantiates every email class.
+		if ( defined( 'WC_ABSPATH' )
+			&& file_exists( WC_ABSPATH . 'includes/emails/class-wc-email-customer-cancelled-order.php' )
+			&& file_exists( WC_ABSPATH . 'includes/emails/class-wc-email-customer-failed-order.php' ) ) {
 			return;
 		}
+
+		$wc_emails = WC()->mailer()->get_emails();
 
 		$customer_email = $order->get_billing_email();
 		$email = isset( $wc_emails[ $email_classes[ $new_status ] ] ) ? $wc_emails[ $email_classes[ $new_status ] ] : null;
@@ -295,6 +298,20 @@ class Stackprime_Functions {
 		$email->recipient = $original_recipient;
 	}
 
+
+	/**
+	 * Turn on WooCommerce's customer cancelled/failed order emails, which are off by default,
+	 * unless the email's own Enable setting has been saved in WooCommerce > Settings > Emails.
+	 */
+	public function enable_customer_email_unless_configured( $enabled, $object = null, $email = null ) {
+		if ( $email instanceof WC_Email ) {
+			$settings = get_option( $email->get_option_key() );
+			if ( is_array( $settings ) && isset( $settings['enabled'] ) ) {
+				return $enabled;
+			}
+		}
+		return true;
+	}
 
 	private function get_tracking_companies() {
 		return array(
@@ -372,15 +389,26 @@ class Stackprime_Functions {
 			return;
 		}
 
-		if ( '' === $data['tracking_number'] ) {
-			$order->delete_meta_data( '_tracking_number_data' );
-			$order->save();
-			return;
-		}
+		// WC_Meta_Box_Order_Data::save (priority 40) reloads and saves the order right after this,
+		// so set the meta on that save instead of saving the order (and firing its hooks) twice.
+		$order_id = $order->get_id();
+		$apply = function ( $object ) use ( $order_id, $data, &$apply ) {
+			if ( ! $object instanceof WC_Order || $object->get_id() !== $order_id ) {
+				return;
+			}
+			remove_action( 'woocommerce_before_order_object_save', $apply );
 
-		$order->update_meta_data( '_tracking_number_data', $data );
-		$order->save();
-		$order->add_order_note( 'Προστέθηκε tracking number' );
+			if ( '' === $data['tracking_number'] ) {
+				$object->delete_meta_data( '_tracking_number_data' );
+			} else {
+				$object->update_meta_data( '_tracking_number_data', $data );
+			}
+		};
+		add_action( 'woocommerce_before_order_object_save', $apply );
+
+		if ( '' !== $data['tracking_number'] ) {
+			$order->add_order_note( 'Προστέθηκε tracking number' );
+		}
 	}
 
 	public function add_tracking_info_to_order_completed_email( $order, $sent_to_admin, $plain_text, $email ) {
@@ -400,7 +428,7 @@ class Stackprime_Functions {
 				"elta_courier" => "https://www.elta-courier.gr/search",
 				"tnt" => "https://www.tnt.com/express/el_gr/site/shipping-tools/tracking.html",
 				"geniki" => "https://www.taxydromiki.com/track",
-				"speedex" => "http://www.speedex.gr/isapohi.asp",
+				"speedex" => "https://www.speedex.gr/isapohi.asp",
 				"acs" => "https://www.acscourier.net/el/myacs/anafores-apostolwn/anazitisi-apostolwn/"
 			);
 
@@ -410,11 +438,19 @@ class Stackprime_Functions {
 
 			if ( $plain_text ) {
 				$selected_company = trim( $company_name . ' ' . $company_url );
-				printf( __("\nO αριθμός παρακολούθησης είναι %s με %s.\n", 'stackprime'), $data['tracking_number'], $selected_company );
+				if ( '' === $selected_company ) {
+					printf( __("\nΟ αριθμός παρακολούθησης είναι %s.\n", 'stackprime'), $data['tracking_number'] );
+				} else {
+					printf( __("\nΟ αριθμός παρακολούθησης είναι %s με %s.\n", 'stackprime'), $data['tracking_number'], $selected_company );
+				}
 			}
 			else {
 				$selected_company = $company_url ? '<a href="' . esc_url( $company_url ) . '">' . esc_html( $company_name ) . '</a>' : esc_html( $company_name );
-				printf( __('<p>O αριθμός παρακολούθησης είναι %s με %s.</p>', 'stackprime'), esc_html( $data['tracking_number'] ), $selected_company );
+				if ( '' === $selected_company ) {
+					printf( __('<p>Ο αριθμός παρακολούθησης είναι %s.</p>', 'stackprime'), esc_html( $data['tracking_number'] ) );
+				} else {
+					printf( __('<p>Ο αριθμός παρακολούθησης είναι %s με %s.</p>', 'stackprime'), esc_html( $data['tracking_number'] ), $selected_company );
+				}
 			}
 		}
 	}
@@ -594,16 +630,32 @@ public function stack_my_bulk_action_handler( $redirect, $doaction, $object_ids 
 	}
 
 	$multiply_price_by = isset( $discounts[ $doaction ] ) ? $discounts[ $doaction ] : null;
+	$changed = 0;
+
+	// Load the selected products and their meta in two queries instead of a few per product.
+	_prime_post_caches( array_map( 'absint', $object_ids ) );
 
 	foreach ( $object_ids as $post_id ) {
+		// edit.php only checks that the user can edit products in general, not each product.
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			continue;
+		}
+
 		$product = wc_get_product( $post_id );
 		if ( ! $product ) {
 			continue;
 		}
+		$changed++;
 
 		// get_children() includes out of stock and hidden variations and is much cheaper
 		// than get_available_variations(), which builds the full frontend data.
-		$targets = $product->is_type( 'variable' ) ? array_filter( array_map( 'wc_get_product', $product->get_children() ) ) : array( $product );
+		if ( $product->is_type( 'variable' ) ) {
+			$children = $product->get_children();
+			_prime_post_caches( $children );
+			$targets = array_filter( array_map( 'wc_get_product', $children ) );
+		} else {
+			$targets = array( $product );
+		}
 
 		foreach ( $targets as $target ) {
 			$regular_price = $target->get_regular_price();
@@ -620,7 +672,10 @@ public function stack_my_bulk_action_handler( $redirect, $doaction, $object_ids 
 				$sale_price = wc_format_decimal( (float) $regular_price * $multiply_price_by, wc_get_price_decimals() );
 				$target->set_price( $sale_price );
 				$target->set_sale_price( $sale_price );
+				// Start the sale now and without an end date. A leftover end date in the past would
+				// keep the product off sale and make the wc_scheduled_sales cron remove the discount.
 				$target->set_date_on_sale_from( '' );
+				$target->set_date_on_sale_to( '' );
 			}
 			// Saving a variation schedules a sync of its parent's prices.
 			$target->save();
@@ -635,7 +690,7 @@ public function stack_my_bulk_action_handler( $redirect, $doaction, $object_ids 
 	}
 
 	// do not forget to add query args to URL because we will show notices later
-	return add_query_arg( 'stack_perc_sale_price_done', count( $object_ids ), $redirect );
+	return add_query_arg( 'stack_perc_sale_price_done', $changed, $redirect );
  
 }
 
